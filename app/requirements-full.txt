@@ -1,0 +1,10 @@
+# 로컬 전체 실행(위성 검증 포함): pip install -r app/requirements-full.txt
+-r ../requirements.txt
+uvicorn==0.47.0
+rasterio==1.5.0
+pyproj==3.7.2
+shapely==2.1.2
+pillow==12.1.1
+matplotlib==3.10.8
+pytest==9.1.1
+httpx==0.28.1
