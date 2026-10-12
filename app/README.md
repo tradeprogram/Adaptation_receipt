@@ -88,3 +88,9 @@ app/
 - 무더위쉼터 전수는 `app/data/shelters_heat_slim.json`(필드 9개)으로 동봉되어 등록 IP가 아닌 서버에서도 AOI 집계가 된다.
 - Vercel 프로젝트 환경변수(값은 대시보드에서만 입력): `GEMINI_API_KEY`, `GEMINI_MODEL`, `DATA_GO_KR_SERVICE_KEY`, `SGIS_CONSUMER_KEY`, `SGIS_CONSUMER_SECRET`, `VWORLD_API_KEY`(브이월드 키의 허용 도메인에 배포 도메인을 추가해야 한다), `KMA_APIHUB_KEY`. 행안부 키는 등록 IP 전용이라 배포본에서는 쓰지 않는다.
 - 배포 순서: Vercel 대시보드 → Add New Project → GitHub `tradeprogram/Adaptation_receipt` Import → Framework Preset "Other" → 환경변수 입력 → Deploy. 이후 `main` 브랜치 푸시마다 자동 재배포.
+
+
+## 2026-10-12 지도 레이어 확장
+- **열(가양8단지)**: 검증 격자를 AOI 둘레 약 1.4 km까지 넓혀 한 번에 읽고(`params.context_pad_lon/lat`), 시공 전·후 여름 지표면온도 중앙값과 전후 차이를 오버레이 PNG(`lst_before/after/diff.png`)로 만든다(`overlay_png.py`). 통계는 종전대로 처리·대조 폴리곤 마스크로만 뽑는다. 카드에 `shelters`(AOI 안 무더위쉼터 목록)가 실려 지도에 점·팝업으로 표시된다. 처리(갈색 실선)·대조(녹색 점선) 폴리곤은 사업 대장의 `geometry.treated/control`을 그대로 그린다.
+- **침수(부여)**: 2단계 침수 범위를 Sentinel-1 RTC(`sentinel-1-rtc`, 익명 SAS 가능 실측)로 구현. A/B 사건의 첫 패스 VV(dB)를 같은 상대궤도 건기 기준선 중앙값(사건 전 75~4일, 모자라면 사건 후 6~75일로 보충 — S1C 궤도 RTC는 2025-07-18부터 존재)과 비교해 `VV<−16 dB & 기준선 대비 −3 dB` 화소를 침수로 분류, 기준선 자체가 −16 dB 미만이면 상시 수역. 시기별 합집합 면적·전후 차이와 `flood_before/after/change.png`를 낸다. 판정 `reduced`(−10% 이하) / `not_reduced`. 실측(부여): 정비 전 149 ha(2023-06-29·09-20) → 후 182 ha(2025-07-16, 3h 강우 133 mm vs 80 mm) → 미감소. 2025-09-09 S1C 장면은 읽기 실패로 `stage2.error`에 남김.
+- 프런트: 오버레이 버튼을 모듈 결과의 `overlays` 키로 동적 생성하고 범례(`overlays.legend`)를 지도 도구 옆에 표시. 기상 관측소(`kma_station`) 점 팝업에 사건별 1h/3h 강우.

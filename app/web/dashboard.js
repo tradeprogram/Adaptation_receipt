@@ -4,8 +4,10 @@
   const api = async (path, opt) => { const r = await fetch(path, opt); if (!r.ok) throw new Error(`${r.status} ${path}`); return r.json(); };
   const TYPE_LABEL = { fire: "산불 피해지 복구·복원", heat: "옥상 차열·녹화(열 저감)", flood: "하천·배수 정비(침수 방재)" };
   const TYPE_CODE = { fire: "FIRE", heat: "HEAT", flood: "FLOOD" };
-  const VERDICT = { detected: "효과 검출", recovered: "대조지 수준 회복", gap_remaining: "회복 격차 잔존", undetected: "미검출", unmeasured: "측정 불가", ready: "2단계 실행 가능", waiting: "대기", waiting_input: "입력 대기", not_run: "미실행", failed: "실패", partial: "부분 완료", ok: "완료", done: "완료", queued: "대기", running: "진행" };
+  const VERDICT = { detected: "효과 검출", recovered: "대조지 수준 회복", gap_remaining: "회복 격차 잔존", reduced: "침수 범위 감소", not_reduced: "침수 범위 미감소", undetected: "미검출", unmeasured: "측정 불가", ready: "2단계 실행 가능", waiting: "대기", waiting_input: "입력 대기", not_run: "미실행", failed: "실패", partial: "부분 완료", ok: "완료", done: "완료", queued: "대기", running: "진행" };
   const SRC = { OBSERVED: "실측", MODEL: "계산", RULE: "규칙", ASSUMPTION: "가정", FORECAST: "예보" };
+  const OV_LABEL = { dnbr: "피해등급", pre: "산불 전", post: "진화 직후", lst_before: "시공 전 온도", lst_after: "시공 후 온도", lst_diff: "전후 차이", flood_before: "정비 전 침수", flood_after: "정비 후 침수", flood_change: "전후 비교", none: "없음" };
+  const ovKeys = (mod) => Object.keys(mod?.overlays || {}).filter((k) => !["bounds", "legend"].includes(k));
   const SEV_COLORS = ["#e9cf9c", "#c48a3e", "#8a5a1e", "#4a2a12"];
   const state = { projects: [], current: null, card: null, overlay: "dnbr", chart: null, poll: null };
 
@@ -21,6 +23,17 @@
     map.addLayer({ id: "aoi-fill", type: "fill", source: "aois", paint: { "fill-color": "#141414", "fill-opacity": 0.04 } });
     map.addLayer({ id: "aoi-line", type: "line", source: "aois", paint: { "line-color": "#141414", "line-width": 1, "line-dasharray": [4, 3] } });
     map.addLayer({ id: "aoi-active", type: "line", source: "aois", filter: ["==", ["get", "id"], ""], paint: { "line-color": "#141414", "line-width": 2 } });
+    // 사업별 부가 레이어: 처리(시공)·대조 폴리곤, 무더위쉼터, 기상 관측소
+    map.addSource("tc", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+    map.addLayer({ id: "tc-fill", type: "fill", source: "tc", paint: { "fill-color": ["match", ["get", "role"], "treated", "#8a5a1e", "#2f7d4f"], "fill-opacity": 0.18 } });
+    map.addLayer({ id: "tc-line-t", type: "line", source: "tc", filter: ["==", ["get", "role"], "treated"], paint: { "line-color": "#8a5a1e", "line-width": 2.2 } });
+    map.addLayer({ id: "tc-line-c", type: "line", source: "tc", filter: ["==", ["get", "role"], "control"], paint: { "line-color": "#2f7d4f", "line-width": 1.6, "line-dasharray": [3, 2] } });
+    map.addSource("pts", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+    map.addLayer({ id: "pts-halo", type: "circle", source: "pts", paint: { "circle-radius": ["match", ["get", "kind"], "station", 9, 7], "circle-color": "#fbfaf6", "circle-opacity": 0.9 } });
+    map.addLayer({ id: "pts", type: "circle", source: "pts", paint: { "circle-radius": ["match", ["get", "kind"], "station", 5, 4.2], "circle-color": ["match", ["get", "kind"], "station", "#141414", "#1f5aa0"], "circle-stroke-color": "#fbfaf6", "circle-stroke-width": 1.2 } });
+    const popup = new maplibregl.Popup({ closeButton: true, maxWidth: "260px" });
+    map.on("click", "pts", (e) => { const f = e.features[0]; popup.setLngLat(f.geometry.coordinates).setHTML(f.properties.html).addTo(map); });
+    map.on("mouseenter", "pts", () => { map.getCanvas().style.cursor = "pointer"; }); map.on("mouseleave", "pts", () => { map.getCanvas().style.cursor = ""; });
     map.on("click", "aoi-fill", (e) => { const id = e.features?.[0]?.properties?.id; if (id) selectProject(id); });
     map.on("mouseenter", "aoi-fill", () => (map.getCanvas().style.cursor = "pointer"));
     map.on("mouseleave", "aoi-fill", () => (map.getCanvas().style.cursor = ""));
@@ -48,20 +61,47 @@
     $("#scalebar").style.setProperty("--w", `${nice / mPerPx}px`); $("#scalebarText").textContent = nice >= 1000 ? `${nice / 1000} km` : `${nice} m`;
     const denom = Math.round(mPerPx * 96 / 0.0254 / 1000) * 1000; $("#sheetScale").textContent = `1 : ${denom.toLocaleString("ko-KR")}`;
   }
+  function drawExtras(p, card) {
+    if (!map.getSource("tc")) { map.once("load", () => drawExtras(p, card)); return; }
+    const g = card?.project?.geometry || {}; const feats = [];
+    (g.treated || []).forEach((f) => feats.push({ type: "Feature", properties: { role: "treated" }, geometry: f.geometry || f }));
+    (g.control || []).forEach((f) => feats.push({ type: "Feature", properties: { role: "control" }, geometry: f.geometry || f }));
+    map.getSource("tc").setData({ type: "FeatureCollection", features: feats });
+    const mod = card?.modules?.[0] || {}; const pts = [];
+    (mod.shelters || []).forEach((s) => pts.push({ type: "Feature", properties: { kind: "shelter", html: `<b>${s.name}</b><span class="sub">${s.addr || ""}</span>무더위쉼터 · 이용가능 ${s.capacity ?? "—"}명${s.year ? " · " + s.year : ""}` }, geometry: { type: "Point", coordinates: [s.lon, s.lat] } }));
+    const st = card?.project?.kma_station; if (st && st.lon) {
+      const evs = (mod.events || []).filter((e) => e.rain).map((e) => `${(e.rain.peak_kst || e.event_peak).slice(0, 10)} 1h ${e.rain.peak_rn} mm · 3h ${e.rain.max_3h} mm`).join("<br>");
+      pts.push({ type: "Feature", properties: { kind: "station", html: `<b>기상청 ${st.name} (${st.stn})</b><span class="sub">지상관측 시간강우 · 호우 사건 추출 지점</span>${evs}` }, geometry: { type: "Point", coordinates: [st.lon, st.lat] } });
+    }
+    map.getSource("pts").setData({ type: "FeatureCollection", features: pts });
+  }
   function setOverlay(name) {
     state.overlay = name;
     if (!map.getLayer("aoi-fill")) { map.once("load", () => setOverlay(name)); return; }
     if (map.getLayer("overlay")) { map.removeLayer("overlay"); map.removeSource("overlay"); }
     const mod = state.card?.modules?.find((m) => m.overlays);
     if (!mod || name === "none") return;
+    if (!mod.overlays[name]) return;
     const b = mod.overlays.bounds; const url = mod.overlays[name] + "?t=" + Date.now();
     map.addSource("overlay", { type: "image", url, coordinates: [[b[0], b[3]], [b[2], b[3]], [b[2], b[1]], [b[0], b[1]]] });
     map.addLayer({ id: "overlay", type: "raster", source: "overlay", paint: { "raster-opacity": +$("#opacity").value / 100, "raster-fade-duration": 120, "raster-resampling": "nearest" } }, "aoi-fill");
   }
+  function syncOverlayUI(mod) {
+    const keys = ovKeys(mod); const seg = $("#overlaySeg"); const has = keys.length > 0;
+    seg.hidden = !has; $("#opacityWrap").hidden = !has; $("#ovLegend").hidden = !has;
+    if (!has) { if (map.getLayer("overlay")) { map.removeLayer("overlay"); map.removeSource("overlay"); } return; }
+    if (!keys.includes(state.overlay) && state.overlay !== "none") state.overlay = keys[0];
+    seg.innerHTML = [...keys, "none"].map((k) => `<button class="seg-btn${k === state.overlay ? " is-active" : ""}" data-ov="${k}">${OV_LABEL[k] || k}</button>`).join("");
+    const lg = mod.overlays.legend?.[state.overlay]; $("#ovLegend").textContent = lg || ""; $("#ovLegend").hidden = !lg;
+  }
+  $("#overlaySeg").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-ov]"); if (!b) return;
+    document.querySelectorAll("#overlaySeg [data-ov]").forEach((x) => x.classList.toggle("is-active", x === b)); setOverlay(b.dataset.ov);
+    const mod = state.card?.modules?.find((m) => m.overlays); const lg = mod?.overlays?.legend?.[b.dataset.ov]; $("#ovLegend").textContent = lg || ""; $("#ovLegend").hidden = !lg;
+  });
   document.querySelectorAll("[data-base]").forEach((b) => b.addEventListener("click", () => {
     document.querySelectorAll("[data-base]").forEach((x) => x.classList.toggle("is-active", x === b)); map.setLayoutProperty("sat", "visibility", b.dataset.base === "sat" ? "visible" : "none");
   }));
-  document.querySelectorAll("[data-ov]").forEach((b) => b.addEventListener("click", () => { document.querySelectorAll("[data-ov]").forEach((x) => x.classList.toggle("is-active", x === b)); setOverlay(b.dataset.ov); }));
   $("#opacity").addEventListener("input", (e) => { if (map.getLayer("overlay")) map.setPaintProperty("overlay", "raster-opacity", +e.target.value / 100); });
 
   // ---------- 도엽 색인 ----------
@@ -84,7 +124,7 @@
     const p = state.projects.find((x) => x.id === id);
     const focus = () => { map.resize(); map.setFilter("aoi-active", ["==", ["get", "id"], id]); map.fitBounds([[p.bbox[0], p.bbox[1]], [p.bbox[2], p.bbox[3]]], { padding: 40, duration: 600 }); };
     if (p) { state.focusBbox = p.bbox; if (map.getLayer("aoi-active")) focus(); else map.once("load", focus); }
-    const r = await api(`/api/projects/${id}/card`); state.card = r.data; renderCard(); setOverlay(state.overlay);
+    const r = await api(`/api/projects/${id}/card`); state.card = r.data; renderCard(); setOverlay(state.overlay); drawExtras(p, state.card);
     if (state.poll) { clearInterval(state.poll); state.poll = null; }
     const jobs = (await api(`/api/jobs?project_id=${id}`)).data.filter((j) => ["queued", "running"].includes(j.status));
     if (jobs.length) watchJob(jobs[0].id);
@@ -109,7 +149,7 @@
     $("#chartBlock").hidden = !mod.series; if (mod.series) renderChart(mod.series);
     $("#severityBlock").hidden = !mod.severity; if (mod.severity) renderSeverity(mod.severity);
     $("#eventsBlock").hidden = !mod.events;
-    if (mod.events) $("#eventsTable").innerHTML = `<tr><th>사건</th><th>단계</th><th>등급</th><th class="num">첫 관측(h)</th><th>궤도</th></tr>` + mod.events.map((e) => `<tr><td>${e.name}<span class="sub">${e.event_peak}</span></td><td>${e.phase === "before" ? "정비 전" : "정비 후"}</td><td><span class="mark ${e.grade === "C" ? "undetected" : "detected"}">${e.grade}</span></td><td class="num">${e.first_pass_hours ?? "미관측"}</td><td><span class="sub">${(e.passes || []).slice(0, 2).map((x) => `${x.relative_orbit}${x.orbit_state?.[0]?.toUpperCase() || ""}`).join(", ")}</span></td></tr>`).join("");
+    if (mod.events) $("#eventsTable").innerHTML = `<tr><th>사건</th><th>단계</th><th>등급</th><th class="num">첫 관측(h)</th><th class="num">침수 ha</th></tr>` + mod.events.map((e) => `<tr><td>${e.name}<span class="sub">${e.event_peak} UTC${e.passes?.[0] ? " · 궤도 " + e.passes[0].relative_orbit : ""}</span></td><td>${e.phase === "before" ? "정비 전" : "정비 후"}</td><td><span class="mark ${e.grade === "C" ? "undetected" : "detected"}">${e.grade}</span></td><td class="num">${e.first_pass_hours ?? "미관측"}</td><td class="num">${e.stage2?.flooded_ha != null ? e.stage2.flooded_ha.toLocaleString("ko-KR") : (e.stage2?.error ? `<span class="sub">${e.stage2.error}</span>` : "—")}</td></tr>`).join("");
     const eq = c.equity; const eb = $("#equityBody");
     if (!eq) eb.innerHTML = `<div class="errata">형평성 감사 미실행</div>`;
     else if (eq.status !== "ok") eb.innerHTML = `<div class="errata">${eq.warnings.join("<br>")}</div><p class="meta">지표 설계: ${eq.data.design.indicators.join(" · ")}</p>`;
@@ -118,7 +158,7 @@
     const sc = mod.scenes || []; $("#scenesBlock").hidden = !sc.length; $("#scenesCount").textContent = sc.length ? `장면 ${sc.length}${mod.failed?.length ? ` · 실패 ${mod.failed.length}` : ""}` : "";
     $("#scenesTable").innerHTML = `<tr><th>시점</th><th>관측일</th><th>장면</th><th>기준선</th><th class="num">구름%</th><th class="num">유효%</th></tr>` + sc.map((s) => `<tr><td>${s.label ?? s.year ?? ""}</td><td class="num">${s.date ?? "없음"}</td><td>${(s.ids || [s.id]).join("<br>")}</td><td class="num">${s.processing_baseline ?? ""}</td><td class="num">${s.cloud_cover != null ? s.cloud_cover.toFixed(1) : ""}</td><td class="num">${s.valid_pct ?? ""}</td></tr>`).join("") + (mod.failed || []).map((f) => `<tr><td colspan="6" class="none">실패: ${f.label || f.year || f.event?.name || ""} — ${f.error}</td></tr>`).join("");
     renderPassRail(sc);
-    const hasOv = !!mod.overlays; $("#overlaySeg").hidden = !hasOv; $("#opacityWrap").hidden = !hasOv;
+    syncOverlayUI(mod);
     $("#btnVerify").disabled = false; $("#btnVerify").querySelector("span").textContent = mod.status === "not_run" ? "검증 실행" : "다시 검정";
     $("#colophonRight").textContent = `조제 ${(mod.computed_at || c.generated_at).slice(0, 10)}${mod.design?.orbit ? " · 궤도 " + mod.design.orbit : ""}${mod.design?.resolution_m ? " · " + mod.design.resolution_m + " m" : ""}`;
     window.dispatchEvent(new CustomEvent("ar:project-selected", { detail: { id: p.id } }));

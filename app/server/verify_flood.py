@@ -8,10 +8,17 @@ from __future__ import annotations
 
 import datetime as dt
 
-from . import stac
+import numpy as np
+
+from . import config, stac
 from .envelope import metric
+from .overlay_png import CHANGE_PALETTE, FLOOD_PALETTE, class_png
 
 S1 = "sentinel-1-grd"
+RTC = "sentinel-1-rtc"          # 지형보정 감마0(선형 전력). 익명 SAS로 읽힘(2026-10-12 실측)
+WATER_DB = -16.0                 # VV 후방산란 임계(dB): 잔잔한 수면
+CHANGE_DB = -3.0                 # 기준선 대비 감소 임계(dB)
+REF_DAYS = (75, 4)               # 기준선: 정점 75일 전 ~ 4일 전, 같은 상대궤도
 
 
 def grade(hours: float | None) -> str:
@@ -60,6 +67,49 @@ def auto_events(project: dict, progress) -> tuple[list[dict], list[str]]:
     return out, warnings
 
 
+def _db(a: np.ndarray) -> np.ndarray:
+    return 10 * np.log10(np.where(a > 0, a, np.nan))
+
+
+def _passes(items: list[dict]) -> list[list[dict]]:
+    """같은 관측시각(패스)의 타일을 묶는다(모자이크용)."""
+    g: dict[str, list[dict]] = {}
+    for it in items:
+        g.setdefault(it["properties"]["datetime"][:16], []).append(it)
+    return [g[k] for k in sorted(g)]
+
+
+def flood_extent(ev: dict, bbox: list[float], res: float, epsg: int) -> tuple[dict, np.ndarray | None, np.ndarray | None]:
+    """A/B 사건의 첫 패스 RTC VV(dB)를 같은 궤도의 건기 기준선 중앙값과 비교해 침수 화소를 뽑는다."""
+    p0 = ev["passes"][0]; orbit = p0.get("relative_orbit")
+    t = dt.datetime.fromisoformat(p0["datetime"].replace("Z", ""))
+    win = f"{(t - dt.timedelta(hours=2)).strftime('%Y-%m-%dT%H:%M:%SZ')}/{(t + dt.timedelta(hours=2)).strftime('%Y-%m-%dT%H:%M:%SZ')}"
+    post_items = [i for i in stac.search_items(RTC, bbox, win, limit=20) if i["properties"].get("sat:relative_orbit") == orbit]
+    if not post_items:
+        return {"error": "사건 직후 패스의 RTC 자료 없음"}, None, None
+    peak = dt.datetime.fromisoformat(ev["event_peak"])
+    fmt = lambda d: d.strftime("%Y-%m-%dT%H:%M:%SZ")
+    # 기준선: 같은 궤도의 건기 패스. 사건 전(75~4일 전)을 우선하고, 모자라면 물이 빠진 뒤(사건 후 6~75일)로 보충한다
+    # (예: S1C 위성 궤도의 RTC는 2025-07-18부터 있어 그 전 기준선이 없다 — 2026-10-12 실측)
+    before = [i for i in stac.search_items(RTC, bbox, f"{fmt(peak - dt.timedelta(days=REF_DAYS[0]))}/{fmt(peak - dt.timedelta(days=REF_DAYS[1]))}", limit=60) if i["properties"].get("sat:relative_orbit") == orbit]
+    ref_passes = _passes(before)[-5:]; side = "before"
+    if len(ref_passes) < 2:
+        after = [i for i in stac.search_items(RTC, bbox, f"{fmt(peak + dt.timedelta(days=6))}/{fmt(peak + dt.timedelta(days=REF_DAYS[0]))}", limit=60) if i["properties"].get("sat:relative_orbit") == orbit]
+        ref_passes = (ref_passes + _passes(after))[:5]; side = "mixed" if before else "after"
+    if len(ref_passes) < 2:
+        return {"error": f"기준선 패스 부족({len(ref_passes)}개, 같은 궤도 {orbit})"}, None, None
+    post = _db(stac.load_bands(RTC, post_items, ["vv"], bbox, res, epsg)["vv"])
+    ref = np.nanmedian(np.stack([_db(stac.load_bands(RTC, ps, ["vv"], bbox, res, epsg)["vv"]) for ps in ref_passes]), axis=0)
+    okm = np.isfinite(post) & np.isfinite(ref)
+    permanent = okm & (ref < WATER_DB)
+    flooded = okm & ~permanent & (post < WATER_DB) & ((post - ref) < CHANGE_DB)
+    px_ha = res * res / 10_000
+    info = {"rtc_ids": [i["id"] for i in post_items], "reference_passes": len(ref_passes), "reference_side": side, "reference_dates": [ps[0]["properties"]["datetime"][:10] for ps in ref_passes],
+            "flooded_ha": round(float(flooded.sum() * px_ha), 1), "permanent_water_ha": round(float(permanent.sum() * px_ha), 1),
+            "valid_pct": round(float(okm.mean() * 100), 1), "hours_after_peak": p0["hours_after_peak"]}
+    return info, flooded, permanent
+
+
 def run(project: dict, progress=lambda done, total, msg: None) -> dict:
     p = project
     bbox = p["geometry"]["bbox"]; events = list(p.get("events", []))
@@ -81,6 +131,40 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
     usable_before = [o for o in out if o["phase"] == "before" and o["grade"] in "AB"]
     usable_after = [o for o in out if o["phase"] == "after" and o["grade"] in "AB"]
     ready = bool(usable_before and usable_after)
+    # ---- 2단계: 침수 범위 ----
+    res = float(p.get("params", {}).get("res_m", 30)); epsg = stac.utm_epsg_for((bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2)
+    union: dict[str, np.ndarray | None] = {"before": None, "after": None}; perm_any = None; stage2_done = 0; overlays = None
+    ab = [o for o in out if o["grade"] in "AB"]
+    for i, o in enumerate(ab):
+        progress(i, len(ab), f"침수 범위: {o['event_peak'][:10]}")
+        try:
+            info, fl, pm = flood_extent(o, bbox, res, epsg)
+        except Exception as e:
+            info, fl, pm = {"error": f"{type(e).__name__}: {e}"}, None, None
+        o["stage2"] = info
+        if fl is not None:
+            stage2_done += 1
+            union[o["phase"]] = fl if union[o["phase"]] is None else (union[o["phase"]] | fl)
+            perm_any = pm if perm_any is None else (perm_any | pm)
+    px_ha = res * res / 10_000
+    ha_b = round(float(union["before"].sum() * px_ha), 1) if union["before"] is not None else None
+    ha_a = round(float(union["after"].sum() * px_ha), 1) if union["after"] is not None else None
+    change_ha = round(ha_a - ha_b, 1) if (ha_a is not None and ha_b is not None) else None
+    change_pct = round(100 * change_ha / ha_b, 1) if (change_ha is not None and ha_b) else None
+    if stage2_done:
+        out_dir = config.RESULTS_DIR / p["id"]; out_dir.mkdir(parents=True, exist_ok=True)
+        shape = next(a for a in union.values() if a is not None).shape
+        pz = perm_any if perm_any is not None else np.zeros(shape, bool)
+        u = f"/api/projects/{p['id']}/overlay/"; overlays = {"bounds": bbox, "legend": {}}
+        for ph, lab in (("before", "정비 전"), ("after", "정비 후")):
+            if union[ph] is not None:
+                cls = np.where(union[ph], 1, np.where(pz, 2, 0)).astype("uint8")
+                class_png(cls, out_dir / f"flood_{ph}.png", FLOOD_PALETTE); overlays[f"flood_{ph}"] = u + f"flood_{ph}.png"
+                overlays["legend"][f"flood_{ph}"] = f"{lab} 호우 침수 추정(청) · 상시 수역(회) · VV<{WATER_DB:.0f} dB & 기준선 대비 {CHANGE_DB:.0f} dB"
+        if union["before"] is not None and union["after"] is not None:
+            cls = np.where(union["before"] & union["after"], 3, np.where(union["before"], 1, np.where(union["after"], 2, np.where(pz, 4, 0)))).astype("uint8")
+            class_png(cls, out_dir / "flood_change.png", CHANGE_PALETTE); overlays["flood_change"] = u + "flood_change.png"
+            overlays["legend"]["flood_change"] = "정비 전에만 침수(청) · 정비 후에만 침수(적) · 두 시기 모두(자) · 상시 수역(회)"
     n_auto = sum(1 for o in out if o.get("source") == "KMA kma_sfctm3")
     return {
         "status": "partial" if (failed or auto_warn) else "ok", "module": "flood", "project_id": p["id"], "computed_at": dt.datetime.now().isoformat(timespec="seconds"),
@@ -91,8 +175,29 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
             "events_total": metric(len(out), "OBSERVED", "건", note=f"기상청 자동 추출 {n_auto}건 + 수기 {len(out) - n_auto}건"),
             "grade_counts": metric(counts, "RULE", "건", note="관측 지연시간 규칙 판정"),
             "stage2_ready": metric(ready, "RULE", "", note="정비 전·후 각각 A/B 사건 1건 이상이면 2단계 실행 가능"),
+            "flooded_ha_before": metric(ha_b, "MODEL", "ha", n=sum(1 for o in ab if o["phase"] == "before" and o.get("stage2", {}).get("flooded_ha") is not None), note="정비 전 A/B 사건 침수 추정 범위 합집합(상시 수역 제외)"),
+            "flooded_ha_after": metric(ha_a, "MODEL", "ha", n=sum(1 for o in ab if o["phase"] == "after" and o.get("stage2", {}).get("flooded_ha") is not None), note="정비 후 A/B 사건 침수 추정 범위 합집합"),
+            "flooded_change_ha": metric(change_ha, "MODEL", "ha", note="정비 후 − 정비 전. 사건 강우 강도 차이는 보정하지 않았다"),
+            "flooded_change_pct": metric(change_pct, "MODEL", "%", note="정비 전 대비 변화율"),
         },
+        "overlays": overlays,
         "events": out, "failed": failed,
-        "verdict": {"code": "ready" if ready else "waiting", "text": ("2단계(침수 범위 이중차분) 실행 조건 충족." if ready else "정비 전 또는 후에 위성으로 확인 가능한(A/B) 사건이 없어 침수 범위 비교를 수행하지 않는다. 현장조사 결과로 대체한다.")},
-        "limitations": ["관측가능성은 통과 여부이며 실제 촬영·구름 무관(SAR) 조건만 반영한다.", "2단계 범위 판독은 본 버전에 포함되지 않았다."],
+        "verdict": _verdict(ready, ha_b, ha_a, change_pct, ab),
+        "limitations": ["관측가능성은 통과 여부이며 실제 촬영·구름 무관(SAR) 조건만 반영한다.",
+                        "침수 범위는 첫 통과 시점의 수면만 잡는다. 정점 후 2~3일이 지난 B등급 사건은 이미 물이 빠진 구역을 놓칠 수 있다.",
+                        "VV 후방산란 임계는 잔잔한 수면 기준이며, 바람에 거친 수면·침수된 작물은 과소, 평탄한 포장면은 과대 추정될 수 있다.",
+                        "정비 전후 사건의 강우 강도가 다르므로 범위 변화는 사업 효과만의 값이 아니다."],
     }
+
+
+def _verdict(ready: bool, ha_b, ha_a, change_pct, ab: list[dict]) -> dict:
+    if ha_b is not None and ha_a is not None:
+        rb = max([(o.get("rain") or {}).get("max_3h", 0) for o in ab if o["phase"] == "before"] or [0])
+        ra = max([(o.get("rain") or {}).get("max_3h", 0) for o in ab if o["phase"] == "after"] or [0])
+        rain = f" (최대 3시간 강우 전 {rb:.0f} mm · 후 {ra:.0f} mm)" if (rb or ra) else ""
+        if change_pct is not None and change_pct <= -10:
+            return {"code": "reduced", "text": f"침수 추정 범위 정비 전 {ha_b:,.0f} ha → 후 {ha_a:,.0f} ha ({change_pct:+.0f}%){rain} — 침수 범위 감소."}
+        return {"code": "not_reduced", "text": f"침수 추정 범위 정비 전 {ha_b:,.0f} ha → 후 {ha_a:,.0f} ha ({change_pct:+.0f}%){rain} — 감소를 확인하지 못함."}
+    if ready:
+        return {"code": "ready", "text": "2단계(침수 범위 비교) 실행 조건은 충족했으나 한쪽 시기의 침수 범위를 산출하지 못했다."}
+    return {"code": "waiting", "text": "정비 전 또는 후에 위성으로 확인 가능한(A/B) 사건이 없어 침수 범위 비교를 수행하지 않는다. 현장조사 결과로 대체한다."}

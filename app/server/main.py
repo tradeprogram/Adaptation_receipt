@@ -169,7 +169,8 @@ def chat_api(body: ChatIn):
 
 @app.get("/api/projects/{pid}/overlay/{name}")
 def overlay(pid: str, name: str):
-    if name not in ("dnbr.png", "pre.png", "post.png"):
+    import re
+    if not re.fullmatch(r"[a-z_]+\.png", name):          # dnbr/pre/post, lst_before/after/diff, flood_before/after/change
         raise HTTPException(404)
     p = config.RESULTS_DIR / pid / name
     if not p.exists():

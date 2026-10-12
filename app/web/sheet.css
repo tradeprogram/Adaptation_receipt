@@ -184,3 +184,10 @@ code{font-family:var(--font-marg);font-size:1em;background:var(--paper-2);paddin
 }
 @media (prefers-reduced-motion: reduce){ *{transition-duration:0ms !important;animation:none !important} .stamp.press{opacity:1} }
 @media print{ .sheet{height:auto} .plate,.margin-left,.sheet-nav,.explain{display:none} .sheet-body{grid-template-columns:1fr} .margin-right{border:0} }
+
+/* 오버레이 범례 · 지도 팝업(도엽 문법: 종이 바탕, 먹선) */
+.ov-legend{font-family:var(--font-ui);font-size:11.5px;color:var(--ink-2);background:var(--paper);border:1px solid var(--rule);padding:4px 9px;max-width:420px;line-height:1.3}
+.maplibregl-popup-content{font:12.5px/1.4 var(--font-ui);color:var(--ink);background:var(--paper);border:1px solid var(--ink);border-radius:0;padding:7px 10px;box-shadow:none}
+.maplibregl-popup-content b{display:block;font-size:13px} .maplibregl-popup-content .sub{display:block;color:var(--ink-3);font-size:11.5px}
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip{border-top-color:var(--ink)} .maplibregl-popup-anchor-top .maplibregl-popup-tip{border-bottom-color:var(--ink)}
+.maplibregl-popup-close-button{color:var(--ink-3);font-size:16px;padding:0 5px}

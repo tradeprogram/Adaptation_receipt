@@ -13,8 +13,9 @@ from rasterio import features
 from rasterio.transform import from_origin
 from shapely.geometry import shape
 
-from . import metrics, stac
+from . import config, metrics, stac
 from .envelope import metric
+from .overlay_png import DIVERGE, WARM, scalar_png
 
 LS = "landsat-c2-l2"
 QA_BAD_BITS = (1, 3, 4, 5)
@@ -51,24 +52,28 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
                 "needs": ["geometry.treated[]", "geometry.control[]"], "metrics": {}, "limitations": []}
     bbox = p["geometry"]["bbox"]; res = float(prm.get("res_m", 30)); max_cloud = float(prm.get("max_cloud", 40))
     years_before = p["years_before"]; years_after = p["years_after"]
+    # 지도 오버레이용 맥락 범위: AOI 둘레로 약 1.4 km(기본)를 넓혀 한 번에 읽고, 통계는 폴리곤 마스크로만 뽑는다
+    pad_lon = float(prm.get("context_pad_lon", 0.016)); pad_lat = float(prm.get("context_pad_lat", 0.013))
+    ctx = [bbox[0] - pad_lon, bbox[1] - pad_lat, bbox[2] + pad_lon, bbox[3] + pad_lat]
     epsg = stac.utm_epsg_for((bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2)
-    x0, y0, x1, y1, w, h = stac.grid_for(bbox, res, epsg)
+    x0, y0, x1, y1, w, h = stac.grid_for(ctx, res, epsg)
     tmask = rasterize(treated, x0, y1, res, w, h, epsg); cmask = rasterize(control, x0, y1, res, w, h, epsg)
-    scenes = []; failed = []; per_year: dict[int, dict[str, list]] = {}
+    scenes = []; failed = []; per_year: dict[int, dict[str, list]] = {}; ctx_stack: dict[int, list] = {}
     years = list(years_before) + list(years_after); total = len(years)
     for i, yr in enumerate(years):
         progress(i, total, f"Landsat {yr} 여름 장면")
         try:
-            feats = stac.search_items(LS, bbox, f"{yr}-06-15T00:00:00Z/{yr}-09-20T23:59:59Z",
+            feats = stac.search_items(LS, ctx, f"{yr}-06-15T00:00:00Z/{yr}-09-20T23:59:59Z",
                                       {"eo:cloud_cover": {"lt": max_cloud}, "platform": {"in": ["landsat-8", "landsat-9"]}}, limit=50)
             per_year[yr] = {"treated": [], "control": []}
             for f in sorted(feats, key=lambda f: f["properties"].get("eo:cloud_cover", 100)):
                 try:
-                    b = stac.load_bands(LS, [f], ["lwir11", "qa_pixel"], bbox, res, epsg, nearest_bands=("qa_pixel",))
+                    b = stac.load_bands(LS, [f], ["lwir11", "qa_pixel"], ctx, res, epsg, nearest_bands=("qa_pixel",))
                 except RuntimeError:
-                    b = stac.load_bands(LS, [f], ["ST_B10", "QA_PIXEL"], bbox, res, epsg, nearest_bands=("QA_PIXEL",))
+                    b = stac.load_bands(LS, [f], ["ST_B10", "QA_PIXEL"], ctx, res, epsg, nearest_bands=("QA_PIXEL",))
                     b = {"lwir11": b["ST_B10"], "qa_pixel": b["QA_PIXEL"]}
                 bad = qa_mask(b["qa_pixel"]); lst = lst_celsius(b["lwir11"], bad)
+                ctx_stack.setdefault(yr, []).append(lst)
                 tv = lst[tmask]; cv = lst[cmask]
                 tv = tv[np.isfinite(tv)]; cv = cv[np.isfinite(cv)]
                 scenes.append({"year": yr, "id": f["id"], "date": f["properties"]["datetime"][:10], "cloud_cover": f["properties"].get("eo:cloud_cover"),
@@ -86,6 +91,24 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
     did = metrics.did_effect(tp, ta, cp, ca)
     ci = metrics.bootstrap_ci(ta - np.median(tp) if tp.size else ta, ca - np.median(cp) if cp.size else ca) if (tp.size and cp.size) else None
     mde = metrics.mde(cp, int(tmask.sum()))
+    overlays = None
+    try:
+        sb = [a for y in years_before for a in ctx_stack.get(y, [])]; sa = [a for y in years_after for a in ctx_stack.get(y, [])]
+        if sb and sa:
+            med_b = np.nanmedian(np.stack(sb), axis=0); med_a = np.nanmedian(np.stack(sa), axis=0); diff = med_a - med_b
+            both = np.concatenate([med_b[np.isfinite(med_b)], med_a[np.isfinite(med_a)]])
+            vmin, vmax = (float(np.percentile(both, 2)), float(np.percentile(both, 98))) if both.size else (20.0, 45.0)
+            out_dir = config.RESULTS_DIR / p["id"]; out_dir.mkdir(parents=True, exist_ok=True)
+            scalar_png(med_b, out_dir / "lst_before.png", vmin, vmax, WARM); scalar_png(med_a, out_dir / "lst_after.png", vmin, vmax, WARM)
+            scalar_png(diff, out_dir / "lst_diff.png", -3.0, 3.0, DIVERGE)
+            u = f"/api/projects/{p['id']}/overlay/"
+            yb = "·".join(map(str, years_before)); ya = "·".join(map(str, years_after))
+            overlays = {"lst_before": u + "lst_before.png", "lst_after": u + "lst_after.png", "lst_diff": u + "lst_diff.png", "bounds": ctx,
+                        "legend": {"lst_before": f"시공 전({yb}) 여름 지표면온도 중앙값 {vmin:.0f}~{vmax:.0f}℃ · 연함→진함",
+                                   "lst_after": f"시공 후({ya}) 여름 지표면온도 중앙값 {vmin:.0f}~{vmax:.0f}℃ · 연함→진함",
+                                   "lst_diff": "시공 후 − 시공 전 지표면온도 차이 −3(청)~+3℃(적) · 처리(갈색 실선)·대조(녹색 점선) 폴리곤"}}
+    except Exception as e:
+        failed.append({"year": "overlay", "error": f"{type(e).__name__}: {e}"})
     try:
         from . import safetydata
         sh = safetydata.shelters_in_bbox(bbox)
@@ -95,7 +118,8 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
         "status": "partial" if failed else ("ok" if did["effect"] is not None else "unmeasured"),
         "module": "heat", "project_id": p["id"], "computed_at": dt.datetime.now().isoformat(timespec="seconds"),
         "design": {"collection": LS, "lst_formula": "DN*0.00341802+149.0 K", "qa_bits_masked": list(QA_BAD_BITS), "resolution_m": res, "season": "6/15~9/20", "epsg": epsg,
-                   "treated_px": int(tmask.sum()), "control_px": int(cmask.sum())},
+                   "treated_px": int(tmask.sum()), "control_px": int(cmask.sum()), "context_bbox": ctx},
+        "overlays": overlays,
         "metrics": {
             "did_effect_lst_c": metric(did["effect"], "MODEL", "℃", n=did["n"].get("treat_post"), note=did["reason"] or "(시공 후-전)-(대조 후-전), 여름 장면 중앙값"),
             "medians": metric(did.get("medians"), "OBSERVED", "℃"),

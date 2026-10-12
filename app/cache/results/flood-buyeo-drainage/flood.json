@@ -2,7 +2,7 @@
  "status": "ok",
  "module": "flood",
  "project_id": "flood-buyeo-drainage",
- "computed_at": "2026-10-12T17:23:31",
+ "computed_at": "2026-10-12T18:36:59",
  "design": {
   "collection": "sentinel-1-grd",
   "grades": {
@@ -42,7 +42,55 @@
    "n": null,
    "measured": true,
    "note": "정비 전·후 각각 A/B 사건 1건 이상이면 2단계 실행 가능"
+  },
+  "flooded_ha_before": {
+   "value": 148.6,
+   "badge": "MODEL",
+   "unit": "ha",
+   "n": 2,
+   "measured": true,
+   "note": "정비 전 A/B 사건 침수 추정 범위 합집합(상시 수역 제외)"
+  },
+  "flooded_ha_after": {
+   "value": 181.8,
+   "badge": "MODEL",
+   "unit": "ha",
+   "n": 1,
+   "measured": true,
+   "note": "정비 후 A/B 사건 침수 추정 범위 합집합"
+  },
+  "flooded_change_ha": {
+   "value": 33.2,
+   "badge": "MODEL",
+   "unit": "ha",
+   "n": null,
+   "measured": true,
+   "note": "정비 후 − 정비 전. 사건 강우 강도 차이는 보정하지 않았다"
+  },
+  "flooded_change_pct": {
+   "value": 22.3,
+   "badge": "MODEL",
+   "unit": "%",
+   "n": null,
+   "measured": true,
+   "note": "정비 전 대비 변화율"
   }
+ },
+ "overlays": {
+  "bounds": [
+   126.75,
+   36.2,
+   127.05,
+   36.45
+  ],
+  "legend": {
+   "flood_before": "정비 전 호우 침수 추정(청) · 상시 수역(회) · VV<-16 dB & 기준선 대비 -3 dB",
+   "flood_after": "정비 후 호우 침수 추정(청) · 상시 수역(회) · VV<-16 dB & 기준선 대비 -3 dB",
+   "flood_change": "정비 전에만 침수(청) · 정비 후에만 침수(적) · 두 시기 모두(자) · 상시 수역(회)"
+  },
+  "flood_before": "/api/projects/flood-buyeo-drainage/overlay/flood_before.png",
+  "flood_after": "/api/projects/flood-buyeo-drainage/overlay/flood_after.png",
+  "flood_change": "/api/projects/flood-buyeo-drainage/overlay/flood_change.png"
  },
  "events": [
   {
@@ -75,6 +123,22 @@
     "total_mm": 59.5,
     "peak_utc": "2023-06-29T06:00",
     "peak_kst": "2023-06-29T15:00+09:00"
+   },
+   "stage2": {
+    "rtc_ids": [
+     "S1A_IW_GRDH_1SDV_20230629T093201_20230629T093226_049199_05EA87_rtc"
+    ],
+    "reference_passes": 3,
+    "reference_side": "before",
+    "reference_dates": [
+     "2023-04-18",
+     "2023-06-05",
+     "2023-06-17"
+    ],
+    "flooded_ha": 43.0,
+    "permanent_water_ha": 1528.7,
+    "valid_pct": 100.0,
+    "hours_after_peak": 3.5
    }
   },
   {
@@ -147,6 +211,24 @@
     "total_mm": 154.4,
     "peak_utc": "2023-09-20T10:00",
     "peak_kst": "2023-09-20T19:00+09:00"
+   },
+   "stage2": {
+    "rtc_ids": [
+     "S1A_IW_GRDH_1SDV_20230921T093206_20230921T093231_050424_06126D_rtc"
+    ],
+    "reference_passes": 5,
+    "reference_side": "before",
+    "reference_dates": [
+     "2023-07-23",
+     "2023-08-04",
+     "2023-08-16",
+     "2023-08-28",
+     "2023-09-09"
+    ],
+    "flooded_ha": 107.3,
+    "permanent_water_ha": 1227.0,
+    "valid_pct": 100.0,
+    "hours_after_peak": 23.5
    }
   },
   {
@@ -179,6 +261,23 @@
     "total_mm": 305.5,
     "peak_utc": "2025-07-16T14:00",
     "peak_kst": "2025-07-16T23:00+09:00"
+   },
+   "stage2": {
+    "rtc_ids": [
+     "S1C_IW_GRDH_1SDV_20250718T213133_20250718T213202_003280_rtc"
+    ],
+    "reference_passes": 4,
+    "reference_side": "after",
+    "reference_dates": [
+     "2025-08-05",
+     "2025-08-11",
+     "2025-08-23",
+     "2025-09-04"
+    ],
+    "flooded_ha": 181.8,
+    "permanent_water_ha": 1360.6,
+    "valid_pct": 100.0,
+    "hours_after_peak": 55.5
    }
   },
   {
@@ -233,16 +332,21 @@
     "total_mm": 137.0,
     "peak_utc": "2025-09-06T15:00",
     "peak_kst": "2025-09-07T00:00+09:00"
+   },
+   "stage2": {
+    "error": "RuntimeError: band vv unreadable for ['S1C_IW_GRDH_1SDV_20250909T214005_20250909T214030_004053_0080EF_rtc', 'S1C_IW_GRDH_1SDV_20250909T213940_20250909T214005_004053_0080EF_rtc']"
    }
   }
  ],
  "failed": [],
  "verdict": {
-  "code": "ready",
-  "text": "2단계(침수 범위 이중차분) 실행 조건 충족."
+  "code": "not_reduced",
+  "text": "침수 추정 범위 정비 전 149 ha → 후 182 ha (+22%) (최대 3시간 강우 전 80 mm · 후 133 mm) — 감소를 확인하지 못함."
  },
  "limitations": [
   "관측가능성은 통과 여부이며 실제 촬영·구름 무관(SAR) 조건만 반영한다.",
-  "2단계 범위 판독은 본 버전에 포함되지 않았다."
+  "침수 범위는 첫 통과 시점의 수면만 잡는다. 정점 후 2~3일이 지난 B등급 사건은 이미 물이 빠진 구역을 놓칠 수 있다.",
+  "VV 후방산란 임계는 잔잔한 수면 기준이며, 바람에 거친 수면·침수된 작물은 과소, 평탄한 포장면은 과대 추정될 수 있다.",
+  "정비 전후 사건의 강우 강도가 다르므로 범위 변화는 사업 효과만의 값이 아니다."
  ]
 }

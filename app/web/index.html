@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<link rel="stylesheet" href="sheet.css?v=11">
+<link rel="stylesheet" href="sheet.css?v=12">
 <link rel="stylesheet" href="ink.css?v=5">
 <link rel="stylesheet" href="layout.css?v=7">
 <link rel="stylesheet" href="print3d.css?v=6">
@@ -77,13 +77,9 @@
           <button class="seg-btn is-active" data-base="map">지형</button>
           <button class="seg-btn" data-base="sat">영상</button>
         </div>
-        <div class="seg" id="overlaySeg" role="group" aria-label="음영" hidden>
-          <button class="seg-btn is-active" data-ov="dnbr">피해등급</button>
-          <button class="seg-btn" data-ov="pre">산불 전</button>
-          <button class="seg-btn" data-ov="post">진화 직후</button>
-          <button class="seg-btn" data-ov="none">없음</button>
-        </div>
+        <div class="seg" id="overlaySeg" role="group" aria-label="음영" hidden></div>
         <label class="opacity" id="opacityWrap" hidden><span class="k">음영</span><input id="opacity" type="range" min="0" max="100" value="85" aria-label="음영 불투명도"></label>
+        <span class="ov-legend" id="ovLegend" hidden></span>
       </div>
       <div class="scalebar" id="scalebar"><i></i><span class="num" id="scalebarText">—</span></div>
     </section>
@@ -235,7 +231,7 @@
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="dashboard.js?v=7"></script>
+<script src="dashboard.js?v=9"></script>
 <script src="chat.js?v=3"></script>
 </body>
 </html>
