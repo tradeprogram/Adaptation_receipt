@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>적응 영수증</title>
+<meta name="description" content="집행된 기후적응 사업의 효과와 형평성을 위성 관측으로 사후 검증하는 도엽형 대시보드">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="sheet.css?v=11">
+<link rel="stylesheet" href="ink.css?v=5">
+<link rel="stylesheet" href="layout.css?v=7">
+<link rel="stylesheet" href="print3d.css?v=6">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- 잉크 필터: 종이 섬유를 따라 가장자리가 미세하게 밀리고(변위), 아주 조금 번진다. -->
+    <filter id="ink" x="-1%" y="-1%" width="102%" height="102%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="11" result="fiber"/>
+      <feDisplacementMap in="SourceGraphic" in2="fiber" scale="0.8" xChannelSelector="R" yChannelSelector="G" result="d"/>
+      <feGaussianBlur in="d" stdDeviation="0.15" result="b"/>
+      <feComponentTransfer in="b"><feFuncA type="gamma" amplitude="1" exponent="0.8" offset="0"/></feComponentTransfer>
+    </filter>
+    <!-- 도장용: 더 거칠게, 인주가 퍼진다. -->
+    <filter id="ink-heavy" x="-4%" y="-6%" width="108%" height="112%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" seed="4" result="fiber"/>
+      <feDisplacementMap in="SourceGraphic" in2="fiber" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="d"/>
+      <feGaussianBlur in="d" stdDeviation="0.3" result="b"/>
+      <feComponentTransfer in="b"><feFuncA type="gamma" amplitude="1.15" exponent="0.9" offset="0"/></feComponentTransfer>
+    </filter>
+    <pattern id="hatch-1" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#8a5a1e" stroke-width="1"/></pattern>
+    <pattern id="hatch-2" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#8a5a1e" stroke-width="1.2"/></pattern>
+    <pattern id="hatch-3" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M0 0L4 4M4 0L0 4" stroke="#8a5a1e" stroke-width="1"/></pattern>
+    <symbol id="i-stamp" viewBox="0 0 24 24"><path d="M12 3a4 4 0 0 0-4 4c0 1.7 1 3 2 4v2H6a2 2 0 0 0-2 2v2h16v-2a2 2 0 0 0-2-2h-4v-2c1-1 2-2.3 2-4a4 4 0 0 0-4-4Z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 21h14" stroke="currentColor" stroke-width="1.6"/></symbol>
+    <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 8V4h10v4M7 17H4v-6h16v6h-3M7 14h10v6H7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="i-json" viewBox="0 0 24 24"><path d="M8 4c-2 0-3 1-3 3v3c0 1-1 2-2 2 1 0 2 1 2 2v3c0 2 1 3 3 3M16 4c2 0 3 1 3 3v3c0 1 1 2 2 2-1 0-2 1-2 2v3c0 2-1 3-3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12 20 4l-4 16-4-7-8-1Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="sheet" id="sheet">
+  <!-- 상단 난외: 도엽번호 · 도엽명 · 축척 -->
+  <header class="margin-top">
+    <a class="brand" href="/" aria-label="적응 영수증 홈">
+      <img class="brand-mark" src="assets/logo.png" alt="" width="239" height="452">
+      <span class="brand-word"><span class="brand-name">적응 영수증</span><span class="brand-tag">ADAPTATION RECEIPT · 기후적응 사업 성과 검증</span></span>
+    </a>
+    <h1 class="sheet-title"><span class="k">도엽번호 <span id="sheetId">—</span></span><span id="sheetName" class="v">도엽을 선택하십시오</span></h1>
+    <div class="sheet-scale"><span class="k">축척</span><span id="sheetScale" class="v">1 : —</span></div>
+  </header>
+
+  <main class="sheet-body" id="viewDashboard">
+    <!-- 좌측 난외: 도엽 색인 -->
+    <aside class="margin-left" aria-label="도엽 색인">
+      <div class="k">도엽 색인</div>
+      <ol id="projectList" class="index" role="list"></ol>
+      <div class="deadline">
+        <div class="k">다음 법정 기한</div>
+        <div id="deadlineNext" class="deadline-name">—</div>
+        <div id="deadlineSub" class="num"></div>
+      </div>
+    </aside>
+
+    <!-- 지면 -->
+    <section class="plate" aria-label="지도">
+      <div class="graticule gr-top" id="grTop"></div>
+      <div class="graticule gr-bottom" id="grBottom"></div>
+      <div class="graticule gr-left" id="grLeft"></div>
+      <div class="graticule gr-right" id="grRight"></div>
+      <div id="map" class="map"></div>
+      <div class="plate-tools">
+        <div class="seg" role="group" aria-label="바탕">
+          <button class="seg-btn is-active" data-base="map">지형</button>
+          <button class="seg-btn" data-base="sat">영상</button>
+        </div>
+        <div class="seg" id="overlaySeg" role="group" aria-label="음영" hidden>
+          <button class="seg-btn is-active" data-ov="dnbr">피해등급</button>
+          <button class="seg-btn" data-ov="pre">산불 전</button>
+          <button class="seg-btn" data-ov="post">진화 직후</button>
+          <button class="seg-btn" data-ov="none">없음</button>
+        </div>
+        <label class="opacity" id="opacityWrap" hidden><span class="k">음영</span><input id="opacity" type="range" min="0" max="100" value="85" aria-label="음영 불투명도"></label>
+      </div>
+      <div class="scalebar" id="scalebar"><i></i><span class="num" id="scalebarText">—</span></div>
+    </section>
+
+
+  </main>
+
+  <!-- 우측 난외주기: 성과 카드 -->
+  <aside class="margin-right" aria-label="난외주기">
+    <div class="printer" id="printer" aria-hidden="true">
+      <svg viewBox="0 0 480 64" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="pr-body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a4541"/><stop offset=".18" stop-color="#2e2a27"/><stop offset=".85" stop-color="#1b1917"/><stop offset="1" stop-color="#0d0c0b"/></linearGradient>
+          <linearGradient id="pr-lip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6a635d"/><stop offset=".5" stop-color="#3a3531"/><stop offset="1" stop-color="#15130f"/></linearGradient>
+          <linearGradient id="pr-slot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000"/><stop offset=".6" stop-color="#171412"/><stop offset="1" stop-color="#2a2622"/></linearGradient>
+          <linearGradient id="pr-roller" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a5550"/><stop offset=".5" stop-color="#2d2925"/><stop offset="1" stop-color="#4a4541"/></linearGradient>
+          <pattern id="pr-stripes" width="12" height="6" patternUnits="userSpaceOnUse"><rect width="5" height="6" fill="rgba(255,255,255,.12)"/></pattern>
+          <linearGradient id="pr-gloss" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".09"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+        </defs>
+        <g class="body">
+          <rect x="0" y="4" width="480" height="56" rx="6" fill="url(#pr-body)"/>
+          <rect x="0" y="4" width="480" height="56" rx="6" fill="url(#pr-gloss)"/>
+          <rect x="0" y="1" width="480" height="9" rx="4.5" fill="url(#pr-lip)"/>
+          <g fill="#8a847c" stroke="#111" stroke-width=".5"><circle cx="12" cy="18" r="2.2"/><circle cx="468" cy="18" r="2.2"/><circle cx="12" cy="50" r="2.2"/><circle cx="468" cy="50" r="2.2"/></g>
+          <text x="22" y="22" fill="#d9d3c7" font-size="9.5" font-weight="600">적응 영수증 · THERMAL 80mm</text>
+          <text x="22" y="32" fill="#8f887e" font-size="8" id="printerCounter">NO. —</text>
+          <circle class="led" cx="440" cy="21" r="3.4"/>
+          <text x="432" y="24" text-anchor="end" fill="#b5ada1" font-size="8" id="printerState">READY</text>
+          <rect x="322" y="15" width="34" height="12" rx="2.5" fill="#3b3733" stroke="#111" stroke-width=".7"/>
+          <text x="339" y="23.5" text-anchor="middle" fill="#c9c2b6" font-size="7">FEED</text>
+          <rect x="16" y="37" width="448" height="16" rx="3" fill="url(#pr-slot)"/>
+          <g class="roller"><rect x="20" y="40" width="440" height="7" rx="3.5" fill="url(#pr-roller)"/><rect class="roller-stripes" x="20" y="40" width="464" height="7" rx="3.5" fill="url(#pr-stripes)"/></g>
+          <path d="M16 54 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5" fill="none" stroke="#9a938a" stroke-width="1"/>
+          <rect x="0" y="57" width="480" height="3" fill="#070606"/>
+        </g>
+      </svg>
+    </div>
+    <div id="cardEmpty" class="note-empty">
+      <div class="k">난외주기</div>
+      <p>왼쪽 도엽 색인에서 사업을 고르십시오. 판정 도장, 지표 장부, 회복 단면도, 한계, 조제 매니페스트가 이 난에 기재됩니다.</p>
+    </div>
+    <div id="card" class="note" hidden>
+      <div class="glow" aria-hidden="true"></div>
+      <div class="note-head">
+        <div class="stamp" id="stamp" aria-live="polite"><span class="stamp-word" id="stampWord">미실행</span><span class="stamp-date num" id="stampDate"></span></div>
+        <div class="note-actions">
+          <button id="btnVerify" class="act act-primary"><svg><use href="#i-stamp"/></svg><span>검증 실행</span></button>
+          <a id="btnCard" class="act" target="_blank" rel="noopener"><svg><use href="#i-print"/></svg><span>카드 인쇄</span></a>
+          <a id="btnJson" class="act" target="_blank" rel="noopener"><svg><use href="#i-json"/></svg><span>JSON</span></a>
+        </div>
+      </div>
+      <div id="jobBar" class="jobbar" hidden><i id="jobFill"></i><span class="num" id="jobText"></span></div>
+      <p id="verdictText" class="verdict"></p>
+      <p id="cardMeta" class="meta"></p>
+      <div id="needs" class="errata" hidden></div>
+
+      <section class="ledger" id="metricsBlock" hidden>
+        <h2>지표 장부</h2>
+        <table class="tbl" id="metricsTable"></table>
+      </section>
+
+      <section class="ledger" id="chartBlock" hidden>
+        <h2>회복 단면도 <small>피해지·대조지 NDVI 중앙값</small></h2>
+        <canvas id="chart" height="170" aria-label="회복 곡선"></canvas>
+        <div id="ratioStrip" class="ratios"></div>
+      </section>
+
+      <section class="ledger" id="severityBlock" hidden>
+        <h2>피해등급 <small>dNBR, Key &amp; Benson 2006</small></h2>
+        <table class="tbl" id="severityTable"></table>
+      </section>
+
+      <section class="ledger" id="eventsBlock" hidden>
+        <h2>호우 사건 관측가능성 <small>A ≤48h · B 48–120h · C &gt;120h</small></h2>
+        <table class="tbl" id="eventsTable"></table>
+      </section>
+
+      <section class="ledger" id="equityBlock">
+        <h2>형평성 감사 <small>수혜 대상 취약도 대 관할</small></h2>
+        <div id="equityBody"></div>
+      </section>
+
+      <section class="ledger" id="limitsBlock" hidden>
+        <h2>한계</h2>
+        <ol id="limitsList" class="limits"></ol>
+      </section>
+
+      <section class="ledger" id="scenesBlock" hidden>
+        <h2>조제 매니페스트 <small id="scenesCount"></small></h2>
+        <table class="tbl small" id="scenesTable"></table>
+      </section>
+
+    </div>
+  </aside>
+
+
+  <!-- 적응영수증.chat — 왼쪽 아래 인장 버튼으로 열고 닫는 떠 있는 패널 -->
+  <button class="ai-fab" id="aiFab" type="button" aria-controls="agent" aria-expanded="false" aria-label="적응영수증.chat 열기"><span><b>AI</b><small>.chat</small></span><i class="badge"></i></button>
+  <aside class="agent" id="agent" aria-label="적응영수증.chat" hidden>
+      <div class="agent-head">
+        <div><strong class="agent-name">적응영수증<span>.chat</span></strong><span class="agent-sub">현재 도엽의 성과 카드를 읽고 근거 수치만 인용합니다</span></div>
+        <span class="agent-status num" id="agentStatus">대기</span>
+        <button class="agent-close" id="agentClose" type="button" aria-label="닫기">×</button>
+      </div>
+      <div class="agent-body" id="agentBody"></div>
+      <form class="agent-form" id="agentForm">
+        <textarea id="agentInput" class="agent-input" rows="2" placeholder="예: 이 사업의 효과가 검출되었나요? 보고서 문장으로 정리해줘" aria-label="질문"></textarea>
+        <div class="agent-row">
+          <div class="agent-quick" id="agentQuick"></div>
+          <button class="act act-primary" type="submit" id="agentSend" aria-label="질문 보내기"><svg><use href="#i-send"/></svg><span>질문</span></button>
+        </div>
+      </form>
+  </aside>
+
+  <!-- 하단 난외: 자료·조제·관측 패스 눈금 -->
+  <footer class="margin-bottom">
+    <div class="passrail" id="passrail" aria-label="관측 장면"></div>
+    <div class="colophon">
+    <nav class="sheet-nav" aria-label="보기">
+      <button class="tab is-active" data-view="dashboard">도엽</button>
+      <button class="tab" data-view="calendar">법정 달력</button>
+      <button class="tab" data-view="keys">연동 상태</button>
+    </nav>
+      <span class="credits">자료 Copernicus Sentinel-1/2 (ESA) · Landsat 8/9 (USGS) · Microsoft Planetary Computer · 공공데이터포털 · 통계청 SGIS</span>
+      <span id="colophonRight" class="num">조제 —</span>
+      <span id="keyChips" class="keychips" title="외부 API 키 상태"></span>
+    </div>
+  </footer>
+
+  <!-- 보조 보기 -->
+  <section id="viewCalendar" class="sheet-body alt" hidden>
+    <div class="alt-inner">
+      <h2 class="alt-title">법정 적응 거버넌스 달력</h2>
+      <p class="lead">결제 시점은 법정 보고 일정에 고정된다. 위성 관측은 5~10월에 축적되고 1~3월에 분석·납품된다.</p>
+      <table class="tbl" id="calendarTable"></table>
+    </div>
+  </section>
+  <section id="viewKeys" class="sheet-body alt" hidden>
+    <div class="alt-inner">
+      <h2 class="alt-title">외부 연동 상태</h2>
+      <p class="lead">위성 자료는 키 없이 동작한다. 아래 키는 형평성 감사·설명·보조 자료에 쓰이며, 비어 있으면 해당 난은 "키 필요"로 기재되고 가상값으로 채우지 않는다.</p>
+      <table class="tbl" id="keysTable"></table>
+      <p class="meta">값은 <code>app/.env</code>에 넣는다(<code>.env.example</code> 참고). 서버 재시작 후 반영.</p>
+    </div>
+  </section>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="dashboard.js?v=7"></script>
+<script src="chat.js?v=3"></script>
+</body>
+</html>

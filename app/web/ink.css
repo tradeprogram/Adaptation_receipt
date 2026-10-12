@@ -1,0 +1,88 @@
+/* 잉크 층 — sheet.css 위에 얹는다. 종이는 사용자가 준 실제 질감(assets/paper.jpg),
+   글·선·도장은 multiply로 섬유에 가라앉고, SVG 변위·번짐 필터(#ink)로 가장자리가 인쇄물처럼 거칠어지며,
+   종이 휘도 마스크(assets/ink-mask.jpg)로 잉크가 결을 따라 미세하게 끊긴다. 영수증 난은 지그재그 절취선 마스크. */
+:root{
+  --ink:#121110; --ink-2:#2e2a25; --ink-3:#5d564d; --rule:#121110; --rule-soft:rgba(18,17,16,.5); --rule-faint:rgba(18,17,16,.26);
+  --paper:rgba(255,255,255,.5); --paper-2:rgba(255,255,255,.3);
+  --seal:#8f1a10; --slip:rgba(143,26,16,.07);
+  --font-rcpt:"Courier Prime","Courier New",monospace;
+}
+html{background:#d9d4c8}
+body{background:url(assets/paper.jpg) center top/1200px auto repeat}
+.sheet{background:transparent}
+
+/* 잉크 질감: 변위+번짐 필터, 결 마스크, multiply */
+.margin-top,.margin-left,.margin-bottom,.note-empty,.alt-inner,.plate-tools,.scalebar,.graticule{filter:url(#ink)}
+.margin-top,.margin-left,.margin-bottom,.note-empty,.alt-inner,.graticule,
+.note>h2,.note>p,.note>.note-head,.note>.errata,.ledger{mix-blend-mode:multiply}
+.margin-top,.margin-left,.note,.margin-bottom,.alt-inner{mask-image:url(assets/ink-mask.jpg);mask-mode:luminance;mask-size:700px auto;mask-repeat:repeat;-webkit-mask-image:url(assets/ink-mask.jpg);-webkit-mask-size:700px auto}
+.ledger{filter:url(#ink)}
+.maplibregl-canvas{mix-blend-mode:multiply}
+.plate{background:transparent}
+.map .maplibregl-ctrl-attrib{background:rgba(255,255,255,.55)}
+/* 세로 눈금: 세로쓰기 박스에서는 인라인 축이 세로이므로 row가 위아래로 배열된다 */
+.gr-left,.gr-right{flex-direction:row}
+
+/* 괘선: 가는 잉크 선은 살짝 끊긴다(마스크가 처리) — 두께만 보정 */
+.sheet-body,.margin-left,.margin-right,.gr-top,.gr-bottom,.gr-left,.gr-right,.ledger h2,.deadline,.explain{border-color:var(--ink)}
+.tbl th{border-bottom-color:var(--rule-soft)} .tbl td{border-bottom-color:var(--rule-faint)}
+
+/* 영수증 난: 절취선 지그재그, 더 하얀 감열지, 등폭 숫자 */
+.ledger{position:relative;margin:18px -6px 0;padding:14px 12px 16px;background:linear-gradient(rgba(255,255,255,.8),rgba(255,255,255,.8)),url(assets/paper.jpg) center/900px auto;
+  mask:conic-gradient(from 135deg at top,#0000,#000 1deg 89deg,#0000 90deg) top/12px 51% repeat-x,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/12px 51% repeat-x;
+  -webkit-mask:conic-gradient(from 135deg at top,#0000,#000 1deg 89deg,#0000 90deg) top/12px 51% repeat-x,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/12px 51% repeat-x}
+.ledger+.ledger{margin-top:10px}
+.ledger h2{font-family:var(--font-rcpt);font-size:13px;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px dashed var(--ink);padding-bottom:5px}
+.ledger h2 small{font-family:var(--font-ui);text-transform:none;letter-spacing:0}
+.ledger .tbl td.num,.ledger .ratio b,.ledger .tbl th.num,.rcpt .val{font-family:var(--font-rcpt);font-weight:700;letter-spacing:-.01em}
+.ledger .tbl th{font-family:var(--font-rcpt);letter-spacing:.08em}
+.ledger .tbl td{border-bottom:1px dotted var(--rule-faint)}
+.ratio{border-right:1px dotted var(--rule-soft)}
+.ratios{border-top:1px dashed var(--ink)}
+
+/* 영수증 행: 항목 ······ 값 */
+.rcpt{display:grid;gap:0}
+.rcpt .row{display:grid;grid-template-columns:auto minmax(18px,1fr) auto;align-items:start;column-gap:8px;padding:5px 0;border-bottom:1px dotted var(--rule-faint)}
+.rcpt .lbl{font-size:12.5px;min-width:0;max-width:62%}
+.rcpt .lbl .sub{display:block;font-size:11.5px;color:var(--ink-3);margin-top:1px;text-wrap:pretty}
+.rcpt .lead{height:1px;border-bottom:2px dotted var(--rule-soft);margin-top:13px}
+.rcpt .val{font-size:14px;text-align:right;white-space:nowrap}
+.rcpt .val .n{display:block;font-size:10.5px;font-weight:400;color:var(--ink-3);letter-spacing:.04em}
+.rcpt .src{display:block;text-align:right;margin-top:2px}
+.rcpt .row.total{border-top:1px dashed var(--ink);border-bottom:0;margin-top:4px;padding-top:8px}
+
+/* 도장: 인주가 고르게 안 묻은 고무 도장 */
+.stamp{mix-blend-mode:multiply;filter:url(#ink-heavy);mask-image:url(assets/stamp-mask.jpg);mask-mode:luminance;mask-size:260px auto;-webkit-mask-image:url(assets/stamp-mask.jpg);-webkit-mask-size:260px auto;border-width:3.5px;outline-width:1.5px;background:rgba(255,255,255,.35)}
+.stamp.gap_remaining{border-color:#7a4a12;outline-color:#7a4a12;color:#7a4a12}
+.stamp-word{font-weight:800}
+
+/* 버튼·세그먼트: 인쇄된 테두리 상자 */
+.act,.seg,.opacity,.scalebar,.index-tile,.sheet-nav,.toast{background:rgba(255,255,255,.5)}
+.act-primary,.tab.is-active,.seg-btn.is-active{background:var(--ink);color:#f3efe6}
+.act-primary:hover{background:#000}
+.index-tile.is-active{background:rgba(255,255,255,.7)}
+
+/* 색인·마감: 손글씨 느낌은 쓰지 않는다. 활자만. */
+.deadline-name{font-family:var(--font-ui)}
+
+@media (max-width:980px){ .ledger{margin:14px 0 0} }
+@media print{ body{background:#fff} .ledger{background:#fff;mask:none;-webkit-mask:none} .margin-top,.margin-left,.margin-bottom,.note,.ledger,.stamp{filter:none;mask:none;-webkit-mask:none} }
+
+/* ---------- 로고·헤더: 로고가 크고, 도엽명은 부제 ---------- */
+.margin-top{grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:28px;padding:4px 0 14px;min-height:0}
+.brand{display:flex;align-items:center;gap:18px;color:var(--ink);text-decoration:none;min-width:0}
+.brand-mark{width:auto;height:104px;flex:none;mix-blend-mode:multiply;filter:none;display:block}
+.brand-word{display:flex;flex-direction:column;line-height:1}
+.brand-name{font-size:42px;font-weight:800;letter-spacing:-.035em;color:var(--ink)}
+.brand-tag{font-family:var(--font-marg);font-size:12.5px;font-weight:600;letter-spacing:.22em;color:var(--ink-3);margin-top:7px;text-transform:uppercase;white-space:nowrap}
+.sheet-title{text-align:left;align-self:center;border-left:1px solid var(--rule);padding-left:18px}
+.sheet-title .k{display:block;margin-bottom:2px}
+.sheet-title .v{font-size:14px;font-weight:600;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sheet-id{display:none}
+@media (max-width:980px){
+  .margin-top{grid-template-columns:1fr;row-gap:8px;align-items:center}
+  .sheet-title{border-left:0;padding-left:0}
+  .brand-name{font-size:32px} .brand-tag{font-size:10.5px;letter-spacing:.16em;white-space:normal} .brand-mark{height:80px} .margin-top{min-height:0}
+  .sheet-title .v{white-space:normal}
+}
+@media (max-width:640px){ .brand-name{font-size:26px} .brand-tag{display:none} .brand-mark{height:60px} }

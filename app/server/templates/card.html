@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>적응 영수증 — {{ card.project.name }}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  /* 성과 카드 — 지형도 난외주기와 같은 문법: 종이, 헤어라인, 검정 도장 */
+  :root{--paper:#fbfaf6;--ink:#141414;--ink-2:#3a3a3a;--ink-3:#6e6a62;--rule:#141414;--rule-soft:rgba(20,20,20,.28);--rule-faint:rgba(20,20,20,.12);--contour:#8a5a1e;--veg:#2f7d4f;--hydro:#1f5e9e;--seal:#b3261e;--slip:#fff3ef;--marg:"Barlow Condensed",Pretendard,sans-serif}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Pretendard,"Malgun Gothic",system-ui,sans-serif;color:var(--ink);background:var(--paper);font-size:13px;line-height:1.5}
+  .sheet{max-width:860px;margin:24px auto;padding:28px 36px;border:1px solid var(--rule)}
+  .k{font-family:var(--marg);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+  .num{font-family:var(--marg);font-variant-numeric:tabular-nums}
+  h1{font-size:20px;margin:0 0 2px;letter-spacing:-.01em}
+  h2{font-size:13.5px;margin:22px 0 6px;border-bottom:1px solid var(--rule);padding-bottom:4px}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:1px solid var(--rule);padding-bottom:10px}
+  .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 16px;margin:12px 0;font-size:12px}
+  .meta b{display:block;color:var(--ink-3);font-weight:500;font-size:11px;font-family:var(--marg);letter-spacing:.12em;text-transform:uppercase}
+  .stamp{width:150px;height:68px;border:2.5px solid var(--seal);outline:1px solid var(--seal);outline-offset:-6px;color:var(--seal);display:flex;flex-direction:column;align-items:center;justify-content:center;transform:rotate(-4deg);flex:none;font-family:var(--marg)}
+  .stamp b{font-size:18px;letter-spacing:.14em;font-weight:800;padding-left:.14em} .stamp span{font-size:11px;letter-spacing:.08em}
+  .stamp.recovered,.stamp.detected,.stamp.ready{border-color:var(--veg);outline-color:var(--veg);color:var(--veg)} .stamp.gap_remaining{border-color:var(--contour);outline-color:var(--contour);color:var(--contour)} .stamp.neutral{border-color:var(--ink-3);outline-color:var(--ink-3);color:var(--ink-3)}
+  .verdict{margin:8px 0 12px;font-size:13.5px;line-height:1.55}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{font-family:var(--marg);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:500;text-align:left;padding:4px 6px;border-bottom:1px solid var(--rule-soft)}
+  td{padding:5px 6px;border-bottom:1px solid var(--rule-faint);text-align:left;vertical-align:top}
+  td.num{text-align:right;white-space:nowrap;font-weight:600;font-size:13px}
+  .badge{font-family:var(--marg);font-size:10.5px;letter-spacing:.1em;white-space:nowrap}
+  .badge::before{content:"";display:inline-block;width:7px;height:7px;margin-right:5px;border:1px solid currentColor}
+  .OBSERVED{color:var(--veg)} .OBSERVED::before{background:currentColor} .MODEL{color:var(--ink)} .MODEL::before{background:linear-gradient(135deg,currentColor 50%,transparent 50%)} .RULE{color:var(--ink-2)} .RULE::before{border-radius:50%} .ASSUMPTION{color:var(--contour)} .ASSUMPTION::before{border-style:dashed} .FORECAST{color:var(--hydro)}
+  .none{color:var(--seal);font-weight:600}
+  ul{margin:4px 0 0 18px;padding:0} li{margin:2px 0}
+  .foot{margin-top:24px;font-size:11px;color:var(--ink-3);border-top:1px solid var(--rule);padding-top:8px;font-family:var(--marg);letter-spacing:.03em}
+  .warn{border:1px solid var(--seal);background:var(--slip);color:var(--seal);padding:8px 12px;font-size:12px}
+  details summary{cursor:pointer}
+  @media print{.sheet{margin:0;border:0;padding:0}}
+</style>
+</head>
+<body>
+<div class="sheet">
+  {% set m0 = card.modules[0] if card.modules else none %}
+  {% set code = m0.verdict.code if m0 else 'not_run' %}
+  <div class="head">
+    <div><div class="k">적응 영수증 · 도엽번호 {{ card.project.id }}</div><h1>{{ card.project.name }}</h1><div class="k" style="text-transform:none;letter-spacing:.04em">기후적응 사업 성과·형평성 검증 카드 — 조제 {{ card.generated_at }}</div></div>
+    <div class="stamp {{ 'neutral' if code in ['not_run','waiting_input','unmeasured','waiting'] else code }}"><b>{{ {'detected':'효과 검출','recovered':'대조지 수준 회복','gap_remaining':'회복 격차 잔존','undetected':'미검출','unmeasured':'측정 불가','ready':'2단계 가능','waiting':'대기','waiting_input':'입력 대기','not_run':'미실행','failed':'실패'}.get(code, code) }}</b><span>{{ (m0.computed_at or '')[:10] if m0 else '' }} 검정</span></div>
+  </div>
+  <div class="meta">
+    <div><b>집행 주체</b>{{ card.project.agency or "—" }}</div>
+    <div><b>지역</b>{{ card.project.region or "—" }}</div>
+    <div><b>사업 기간</b>{{ card.project.period or "—" }}</div>
+    <div><b>예산</b>{% if card.project.budget_krw %}{{ "{:,}".format(card.project.budget_krw) }} 원{% else %}—{% endif %}</div>
+  </div>
+  {% if card.project.legal_basis %}<div style="font-size:12px;color:var(--muted)">보고 근거: {{ card.project.legal_basis }}</div>{% endif %}
+  {% if card.project.description %}<p style="margin:8px 0 0">{{ card.project.description }}</p>{% endif %}
+
+  {% for m in card.modules %}
+  <h2>{{ m.label }}</h2>
+  <div class="verdict {{ m.verdict.code }}"><b>판정 · {{ {'detected':'효과 검출','recovered':'대조지 수준 회복','gap_remaining':'회복 격차 잔존','undetected':'미검출','unmeasured':'측정 불가','ready':'2단계 실행 가능','waiting':'대기','waiting_input':'입력 대기','not_run':'미실행','failed':'실패'}.get(m.verdict.code, m.verdict.code) }}</b> — {{ m.verdict.text }}</div>
+  {% if m.needs %}<div class="warn">필요한 입력: {{ m.needs|join(", ") }}</div>{% endif %}
+  {% if m.metrics %}
+  <table>
+    <tr><th>지표</th><th class="num">값</th><th>n</th><th>출처</th><th>설명</th></tr>
+    {% for r in m.metrics %}
+    <tr><td>{{ r.key }}</td><td class="num">{% if r.measured %}{{ r.display }}{% else %}<span class="none">측정 불가</span>{% endif %}</td><td>{{ r.n if r.n is not none else "" }}</td><td><span class="badge {{ r.badge }}">{{ r.badge_label }}</span></td><td style="color:var(--muted)">{{ r.note }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% if m.series %}
+  <table style="margin-top:8px"><tr><th>시점</th><th>관측일</th><th class="num">피해지 NDVI 중앙값</th><th class="num">대조지 NDVI 중앙값</th><th class="num">회복률</th><th class="num">n(피해/대조)</th></tr>
+    {% for s in m.series %}<tr><td>{{ s.label }}</td><td>{{ s.date }}</td><td class="num">{{ "%.3f"|format(s.burned.median) if s.burned.median is not none else "—" }}</td><td class="num">{{ "%.3f"|format(s.control.median) if s.control.median is not none else "—" }}</td><td class="num">{{ "%.2f"|format(s.recovery_ratio) if s.recovery_ratio is not none else "—" }}</td><td class="num">{{ s.burned.n }}/{{ s.control.n }}</td></tr>{% endfor %}
+  </table>
+  {% endif %}
+  {% if m.severity %}
+  <table style="margin-top:8px"><tr><th>dNBR 피해등급</th><th class="num">면적(ha)</th></tr>{% for s in m.severity %}<tr><td>{{ s.label }}</td><td class="num">{{ "{:,}".format(s.ha) }}</td></tr>{% endfor %}</table>
+  {% endif %}
+  {% if m.events %}
+  <table style="margin-top:8px"><tr><th>사건</th><th>정점</th><th>단계</th><th>등급</th><th class="num">첫 관측(시간 후)</th></tr>{% for e in m.events %}<tr><td>{{ e.name }}</td><td>{{ e.event_peak }}</td><td>{{ e.phase }}</td><td><b>{{ e.grade }}</b></td><td class="num">{{ e.first_pass_hours if e.first_pass_hours is not none else "미관측" }}</td></tr>{% endfor %}</table>
+  {% endif %}
+  {% if m.design %}<div style="font-size:11px;color:var(--muted);margin-top:8px"><b>설계:</b> {% for k,v in m.design.items() %}{{ k }}={{ v }}{% if not loop.last %} · {% endif %}{% endfor %}</div>{% endif %}
+  {% if m.scenes %}<details style="margin-top:6px"><summary style="font-size:11px;color:var(--muted);cursor:pointer">재현 매니페스트 — 장면 {{ m.scenes|length }}건{% if m.failed %}, 실패 {{ m.failed|length }}건{% endif %}</summary>
+    <table style="font-size:11px"><tr><th>시점</th><th>관측일</th><th>장면 ID</th><th>기준선</th><th class="num">구름%</th><th class="num">유효%</th></tr>
+    {% for s in m.scenes %}<tr><td>{{ s.label or s.year }}</td><td>{{ s.date or "없음" }}</td><td style="word-break:break-all">{{ (s.ids|join(", ")) if s.ids is defined else s.id }}</td><td>{{ s.processing_baseline or "" }}</td><td class="num">{{ "%.1f"|format(s.cloud_cover) if s.cloud_cover is not none else "" }}</td><td class="num">{{ s.valid_pct if s.valid_pct is defined else "" }}</td></tr>{% endfor %}
+    {% for f in m.failed %}<tr><td colspan="6" class="none">실패: {{ f }}</td></tr>{% endfor %}</table></details>{% endif %}
+  {% if m.limitations %}<div style="margin-top:8px"><b style="font-size:12px">한계</b><ul>{% for l in m.limitations %}<li>{{ l }}</li>{% endfor %}</ul></div>{% endif %}
+  {% endfor %}
+
+  <h2>형평성 감사</h2>
+  {% if card.equity %}
+    {% if card.equity.status != "ok" %}<div class="warn">{{ card.equity.warnings|join(" / ") }}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px">지표 설계: {{ card.equity.data.design.indicators|join(", ") }} · 단위: {{ card.equity.data.design.unit }}</div>
+    {% else %}
+    <table><tr><th>지표</th><th class="num">값</th><th>n</th><th>출처</th></tr>{% for k,mt in card.equity.data.metrics.items() %}<tr><td>{{ k }}</td><td class="num">{{ mt.value if mt.value is not none else "측정 불가" }}</td><td>{{ mt.n or "" }}</td><td><span class="badge {{ mt.badge }}">{{ card.badges[mt.badge] }}</span></td></tr>{% endfor %}</table>
+    {% endif %}
+  {% else %}<div class="warn">형평성 감사가 실행되지 않았다.</div>{% endif %}
+
+  <div class="foot">{{ card.disclaimer }} 자료: Copernicus Sentinel-1/2 (ESA), Landsat 8/9 (USGS) via Microsoft Planetary Computer; 공공데이터포털; 통계청 SGIS.</div>
+</div>
+</body>
+</html>

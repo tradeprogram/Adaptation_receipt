@@ -1,0 +1,80 @@
+{
+ "scenes": [
+  {
+   "label": "pre",
+   "window": [
+    "2025-01-21",
+    "2025-03-21"
+   ],
+   "date": "2025-03-14",
+   "ids": [
+    "S2B_MSIL2A_20250314T020659_R103_T52SDF_20250314T055121"
+   ],
+   "orbit": "R103",
+   "processing_baseline": "05.11",
+   "cloud_cover": 0.143819,
+   "valid_pct": 97.4
+  },
+  {
+   "label": "post",
+   "window": [
+    "2025-03-31",
+    "2025-05-12"
+   ],
+   "date": "2025-04-28",
+   "ids": [
+    "S2C_MSIL2A_20250428T020711_R103_T52SDF_20250428T054014"
+   ],
+   "orbit": "R103",
+   "processing_baseline": "05.11",
+   "cloud_cover": 3.824965,
+   "valid_pct": 89.5
+  },
+  {
+   "label": "2025 생장기",
+   "window": [
+    "2025-06-15",
+    "2025-07-31"
+   ],
+   "date": "2025-07-09",
+   "ids": [
+    "S2A_MSIL2A_20250709T021131_R103_T52SDF_20250709T062417"
+   ],
+   "orbit": "R103",
+   "processing_baseline": "05.11",
+   "cloud_cover": 1.934212,
+   "valid_pct": 99.8
+  },
+  {
+   "label": "2026 생장기",
+   "window": [
+    "2026-06-01",
+    "2026-07-31"
+   ],
+   "date": "2026-06-12",
+   "ids": [
+    "S2C_MSIL2A_20260612T020651_R103_T52SDF_20260612T053415"
+   ],
+   "orbit": "R103",
+   "processing_baseline": "05.12",
+   "cloud_cover": 0.666387,
+   "valid_pct": 99.8
+  },
+  {
+   "label": "2026 생장기 말",
+   "window": [
+    "2026-09-01",
+    "2026-10-08"
+   ],
+   "date": "2026-10-02",
+   "ids": [
+    "S2A_MSIL2A_20261002T021121_R103_T52SDF_20261002T053907"
+   ],
+   "orbit": "R103",
+   "processing_baseline": "05.13",
+   "cloud_cover": 1.150036,
+   "valid_pct": 99.8
+  }
+ ],
+ "failed": []
+}

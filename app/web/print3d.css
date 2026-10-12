@@ -1,0 +1,71 @@
+/* 감열 프린터와 영수증 출력 연출 v2
+   1) 급지(feed): 종이가 계단식(steps)으로 이송되며 헤드를 지난 줄부터 인쇄된다. 헤드 발광선이 인쇄 경계를 따라 내려온다.
+   2) 절단(cut): 커터가 '툭' 치며 종이가 아래로 튕긴다.
+   3) 안착(settle): 잘린 영수증이 앞으로 스윙했다가 되돌아오며 데스크에 놓인다.
+   영수증 종이는 감열지 색감(희고 약간 따뜻한 흰색, 열헤드 가로 결, 살짝 흐린 숯색 글자). */
+.margin-right{position:relative;perspective:1500px;perspective-origin:50% 0;padding-top:0 !important;overflow-x:hidden}
+
+/* ---------- 프린터 기기(SVG) ---------- */
+.printer{position:sticky;top:0;z-index:6;margin:0 -18px 12px -18px;line-height:0}
+.printer svg{width:100%;height:70px;display:block}
+.printer .roller{transition:none}
+.printer.busy .roller-stripes{animation:roll 260ms linear infinite}
+@keyframes roll{to{transform:translateX(-12px)}}
+.printer.busy .led{fill:#e39b2a;filter:drop-shadow(0 0 4px #e39b2a);animation:led 520ms steps(2) infinite}
+.printer .led{fill:#2f9d5f;filter:drop-shadow(0 0 3px #2f9d5f)}
+@keyframes led{50%{opacity:.3}}
+.printer.busy .body{animation:hum 90ms linear infinite alternate}
+@keyframes hum{from{transform:translateY(0)}to{transform:translateY(.4px)}}
+.printer text{font-family:var(--font-marg);letter-spacing:.12em}
+
+/* ---------- 영수증 종이 ---------- */
+.note{transform-origin:50% 0;position:relative;margin:0 2px;padding:14px 14px 22px;
+  color:#2b2723;
+  background:
+    repeating-linear-gradient(180deg,rgba(0,0,0,.022) 0 1px,transparent 1px 3px),
+    linear-gradient(90deg,rgba(0,0,0,.06),transparent 10px,transparent calc(100% - 10px),rgba(0,0,0,.06)),
+    linear-gradient(#fcfbf5,#faf8f0);
+  text-shadow:0 0 .35px rgba(43,39,35,.55)}
+.note .ledger{background:transparent;mask:none;-webkit-mask:none;margin:14px 0 0;padding:0;border-top:1px dashed rgba(43,39,35,.5)}
+.note .ledger+.ledger{margin-top:12px}
+.note .ledger h2{border-bottom:0;padding-top:10px;color:#2b2723}
+.note .tbl th{color:#5a544c}
+.note .rcpt .lead{border-bottom-color:rgba(43,39,35,.45)}
+/* 상·하단 절취선: 종이 자체를 지그재그로 자른다(마스크). 출력 중에는 clip-path 노출이 대신하므로 마스크를 끈다 */
+.note{--zz:14px;padding-top:20px;padding-bottom:26px;
+  mask:conic-gradient(from 135deg at top,#0000,#000 1deg 89deg,#0000 90deg) top/var(--zz) 51% repeat-x,
+       conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/var(--zz) 51% repeat-x;
+  -webkit-mask:conic-gradient(from 135deg at top,#0000,#000 1deg 89deg,#0000 90deg) top/var(--zz) 51% repeat-x,
+       conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/var(--zz) 51% repeat-x}
+.note::before,.note::after{display:none}
+.note.printed{box-shadow:0 1px 0 rgba(0,0,0,.08),0 6px 14px -12px rgba(0,0,0,.35)}
+
+/* ---------- 출력 모션 ---------- */
+.note.feeding{animation:feed 1600ms steps(32,end) both,reveal 1600ms steps(32,end) both;will-change:transform,clip-path}
+.note.feeding .glow{opacity:1;animation:glow 1600ms steps(32,end) both}
+.glow{position:absolute;left:0;right:0;height:18px;top:0;pointer-events:none;opacity:0;
+  background:linear-gradient(180deg,rgba(227,155,42,0) 0,rgba(227,155,42,.45) 55%,rgba(255,236,190,.9) 70%,rgba(227,155,42,0) 100%);mix-blend-mode:multiply}
+@keyframes feed{0%{transform:translateY(-100%)}100%{transform:translateY(0)}}
+@keyframes reveal{0%{clip-path:inset(0 0 100% 0)}100%{clip-path:inset(0 0 0 0)}}
+@keyframes glow{0%{top:0}100%{top:100%}}
+.note.cutting{animation:cut 240ms cubic-bezier(.3,1.6,.5,1) both}
+@keyframes cut{0%{transform:translateY(0)}40%{transform:translateY(-5px)}100%{transform:translateY(0)}}
+.note.settling{animation:settle 1100ms cubic-bezier(.22,1,.36,1) both;box-shadow:0 26px 30px -20px rgba(0,0,0,.6)}
+@keyframes settle{
+  0%{transform:rotateX(-26deg) translateY(-6px)}
+  35%{transform:rotateX(10deg) translateY(4px)}
+  62%{transform:rotateX(-4deg) translateY(0)}
+  82%{transform:rotateX(1.5deg)}
+  100%{transform:rotateX(0)}
+}
+/* 출력 중에는 무거운 잉크 필터를 끈다 */
+.note.feeding .ledger,.note.feeding .stamp,.note.settling .ledger{filter:none}
+.note.feeding,.note.settling{mask:none;-webkit-mask:none}
+/* 도장: 안착한 뒤 찍힌다(전이라 탭이 숨겨져도 최종 상태 보장) */
+.note .stamp.press{animation:none}
+.note .stamp{transition:opacity 220ms var(--ease) 80ms,transform 220ms var(--ease) 80ms}
+.note.feeding .stamp,.note.cutting .stamp,.note.settling .stamp{opacity:0;transform:rotate(-4deg) scale(1.18)}
+.note.printed .stamp{opacity:1;transform:rotate(-4deg) scale(1)}
+
+@media (prefers-reduced-motion: reduce){ .note.feeding,.note.cutting,.note.settling{animation:none;clip-path:none;box-shadow:none} .glow{display:none} .printer.busy .led,.printer.busy .body,.printer.busy .roller-stripes{animation:none} }
+@media print{ .printer{display:none} .note{background:#fff;text-shadow:none} .note::before,.note::after{display:none} }
