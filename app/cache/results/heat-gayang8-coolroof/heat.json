@@ -2,7 +2,7 @@
  "status": "ok",
  "module": "heat",
  "project_id": "heat-gayang8-coolroof",
- "computed_at": "2026-10-12T17:37:56",
+ "computed_at": "2026-10-12T18:33:02",
  "design": {
   "collection": "landsat-c2-l2",
   "lst_formula": "DN*0.00341802+149.0 K",
@@ -15,24 +15,46 @@
   "resolution_m": 30.0,
   "season": "6/15~9/20",
   "epsg": 32652,
-  "treated_px": 9,
-  "control_px": 4
+  "treated_px": 8,
+  "control_px": 3,
+  "context_bbox": [
+   126.836,
+   37.544000000000004,
+   126.88000000000001,
+   37.58
+  ]
+ },
+ "overlays": {
+  "lst_before": "/api/projects/heat-gayang8-coolroof/overlay/lst_before.png",
+  "lst_after": "/api/projects/heat-gayang8-coolroof/overlay/lst_after.png",
+  "lst_diff": "/api/projects/heat-gayang8-coolroof/overlay/lst_diff.png",
+  "bounds": [
+   126.836,
+   37.544000000000004,
+   126.88000000000001,
+   37.58
+  ],
+  "legend": {
+   "lst_before": "시공 전(2024) 여름 지표면온도 중앙값 27~44℃ · 연함→진함",
+   "lst_after": "시공 후(2026) 여름 지표면온도 중앙값 27~44℃ · 연함→진함",
+   "lst_diff": "시공 후 − 시공 전 지표면온도 차이 −3(청)~+3℃(적) · 처리(갈색 실선)·대조(녹색 점선) 폴리곤"
+  }
  },
  "metrics": {
   "did_effect_lst_c": {
-   "value": 0.28369140625,
+   "value": 0.0341796875,
    "badge": "MODEL",
    "unit": "℃",
-   "n": 27,
+   "n": 24,
    "measured": true,
    "note": "(시공 후-전)-(대조 후-전), 여름 장면 중앙값"
   },
   "medians": {
    "value": {
-    "treat_pre": 39.651763916015625,
-    "treat_post": 34.846038818359375,
-    "ctrl_pre": 39.569732666015625,
-    "ctrl_post": 34.480316162109375
+    "treat_pre": 39.650054931640625,
+    "treat_post": 34.610198974609375,
+    "ctrl_pre": 39.643218994140625,
+    "ctrl_post": 34.569183349609375
    },
    "badge": "OBSERVED",
    "unit": "℃",
@@ -41,18 +63,15 @@
    "note": ""
   },
   "ci95": {
-   "value": [
-    -5.01165771484375,
-    4.46051025390625
-   ],
+   "value": null,
    "badge": "MODEL",
    "unit": "℃",
    "n": null,
-   "measured": true,
+   "measured": false,
    "note": ""
   },
   "mde_c": {
-   "value": 1.6019515452538275,
+   "value": 1.64591765625,
    "badge": "ASSUMPTION",
    "unit": "℃",
    "n": null,
@@ -173,32 +192,32 @@
    "id": "LC08_L2SP_116034_20240626_02_T1",
    "date": "2024-06-26",
    "cloud_cover": 2.71,
-   "treated_px": 9,
-   "control_px": 4
+   "treated_px": 8,
+   "control_px": 3
   },
   {
    "year": 2024,
    "id": "LC08_L2SP_116034_20240829_02_T1",
    "date": "2024-08-29",
    "cloud_cover": 3.08,
-   "treated_px": 9,
-   "control_px": 4
+   "treated_px": 8,
+   "control_px": 3
   },
   {
    "year": 2024,
    "id": "LC08_L2SP_116034_20240813_02_T1",
    "date": "2024-08-13",
    "cloud_cover": 8.25,
-   "treated_px": 9,
-   "control_px": 4
+   "treated_px": 8,
+   "control_px": 3
   },
   {
    "year": 2024,
    "id": "LC09_L2SP_116034_20240618_02_T1",
    "date": "2024-06-18",
    "cloud_cover": 11.86,
-   "treated_px": 9,
-   "control_px": 4
+   "treated_px": 8,
+   "control_px": 3
   },
   {
    "year": 2024,
@@ -213,30 +232,30 @@
    "id": "LC08_L2SP_116034_20260904_02_T1",
    "date": "2026-09-04",
    "cloud_cover": 0.46,
-   "treated_px": 9,
-   "control_px": 4
+   "treated_px": 8,
+   "control_px": 3
   },
   {
    "year": 2026,
    "id": "LC08_L2SP_116034_20260920_02_T1",
    "date": "2026-09-20",
    "cloud_cover": 2.17,
-   "treated_px": 9,
-   "control_px": 4
+   "treated_px": 8,
+   "control_px": 3
   },
   {
    "year": 2026,
    "id": "LC08_L2SP_116034_20260616_02_T1",
    "date": "2026-06-16",
    "cloud_cover": 3.71,
-   "treated_px": 9,
-   "control_px": 4
+   "treated_px": 8,
+   "control_px": 3
   }
  ],
  "failed": [],
  "verdict": {
   "code": "undetected",
-  "text": "이중차분 +0.28℃가 검출가능최소효과 1.60℃ 미만 — 미검출."
+  "text": "이중차분 +0.03℃가 검출가능최소효과 1.65℃ 미만 — 미검출."
  },
  "limitations": [
   "30 m 열적외(원 100 m) 해상도에서 단일 동 효과는 검출되기 어렵다. 블록 단위 폴리곤 권장.",

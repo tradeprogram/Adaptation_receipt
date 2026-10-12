@@ -21,7 +21,7 @@
   .meta b{display:block;color:var(--ink-3);font-weight:500;font-size:11px;font-family:var(--marg);letter-spacing:.12em;text-transform:uppercase}
   .stamp{width:150px;height:68px;border:2.5px solid var(--seal);outline:1px solid var(--seal);outline-offset:-6px;color:var(--seal);display:flex;flex-direction:column;align-items:center;justify-content:center;transform:rotate(-4deg);flex:none;font-family:var(--marg)}
   .stamp b{font-size:18px;letter-spacing:.14em;font-weight:800;padding-left:.14em} .stamp span{font-size:11px;letter-spacing:.08em}
-  .stamp.recovered,.stamp.detected,.stamp.ready{border-color:var(--veg);outline-color:var(--veg);color:var(--veg)} .stamp.gap_remaining{border-color:var(--contour);outline-color:var(--contour);color:var(--contour)} .stamp.neutral{border-color:var(--ink-3);outline-color:var(--ink-3);color:var(--ink-3)}
+  .stamp.recovered,.stamp.detected,.stamp.ready,.stamp.reduced{border-color:var(--veg);outline-color:var(--veg);color:var(--veg)} .stamp.gap_remaining,.stamp.not_reduced{border-color:var(--contour);outline-color:var(--contour);color:var(--contour)} .stamp.neutral{border-color:var(--ink-3);outline-color:var(--ink-3);color:var(--ink-3)}
   .verdict{margin:8px 0 12px;font-size:13.5px;line-height:1.55}
   table{width:100%;border-collapse:collapse;font-size:12px}
   th{font-family:var(--marg);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:500;text-align:left;padding:4px 6px;border-bottom:1px solid var(--rule-soft)}
@@ -44,7 +44,7 @@
   {% set code = m0.verdict.code if m0 else 'not_run' %}
   <div class="head">
     <div><div class="k">적응 영수증 · 도엽번호 {{ card.project.id }}</div><h1>{{ card.project.name }}</h1><div class="k" style="text-transform:none;letter-spacing:.04em">기후적응 사업 성과·형평성 검증 카드 — 조제 {{ card.generated_at }}</div></div>
-    <div class="stamp {{ 'neutral' if code in ['not_run','waiting_input','unmeasured','waiting'] else code }}"><b>{{ {'detected':'효과 검출','recovered':'대조지 수준 회복','gap_remaining':'회복 격차 잔존','undetected':'미검출','unmeasured':'측정 불가','ready':'2단계 가능','waiting':'대기','waiting_input':'입력 대기','not_run':'미실행','failed':'실패'}.get(code, code) }}</b><span>{{ (m0.computed_at or '')[:10] if m0 else '' }} 검정</span></div>
+    <div class="stamp {{ 'neutral' if code in ['not_run','waiting_input','unmeasured','waiting'] else code }}"><b>{{ {'detected':'효과 검출','recovered':'대조지 수준 회복','gap_remaining':'회복 격차 잔존','undetected':'미검출','unmeasured':'측정 불가','ready':'2단계 가능','waiting':'대기','waiting_input':'입력 대기','not_run':'미실행','failed':'실패','reduced':'침수 범위 감소','not_reduced':'침수 범위 미감소'}.get(code, code) }}</b><span>{{ (m0.computed_at or '')[:10] if m0 else '' }} 검정</span></div>
   </div>
   <div class="meta">
     <div><b>집행 주체</b>{{ card.project.agency or "—" }}</div>
@@ -57,7 +57,7 @@
 
   {% for m in card.modules %}
   <h2>{{ m.label }}</h2>
-  <div class="verdict {{ m.verdict.code }}"><b>판정 · {{ {'detected':'효과 검출','recovered':'대조지 수준 회복','gap_remaining':'회복 격차 잔존','undetected':'미검출','unmeasured':'측정 불가','ready':'2단계 실행 가능','waiting':'대기','waiting_input':'입력 대기','not_run':'미실행','failed':'실패'}.get(m.verdict.code, m.verdict.code) }}</b> — {{ m.verdict.text }}</div>
+  <div class="verdict {{ m.verdict.code }}"><b>판정 · {{ {'detected':'효과 검출','recovered':'대조지 수준 회복','gap_remaining':'회복 격차 잔존','undetected':'미검출','unmeasured':'측정 불가','ready':'2단계 실행 가능','waiting':'대기','waiting_input':'입력 대기','not_run':'미실행','failed':'실패','reduced':'침수 범위 감소','not_reduced':'침수 범위 미감소'}.get(m.verdict.code, m.verdict.code) }}</b> — {{ m.verdict.text }}</div>
   {% if m.needs %}<div class="warn">필요한 입력: {{ m.needs|join(", ") }}</div>{% endif %}
   {% if m.metrics %}
   <table>

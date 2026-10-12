@@ -45,7 +45,7 @@ def build_card(project: dict, results: dict[str, dict | None], equity: dict | No
                          "n": mt.get("n"), "measured": mt.get("measured", mt["value"] is not None), "note": mt.get("note", "")})
         modules.append({"module": m, "label": MODULE_LABEL.get(m, m), "status": r.get("status"), "verdict": r.get("verdict", {"code": r.get("status"), "text": r.get("reason", "")}),
                         "metrics": rows, "design": r.get("design", {}), "limitations": r.get("limitations", []), "scenes": r.get("scenes", []), "failed": r.get("failed", []),
-                        "series": r.get("series"), "severity": r.get("severity"), "events": r.get("events"), "overlays": r.get("overlays"), "computed_at": r.get("computed_at"), "needs": r.get("needs")})
+                        "series": r.get("series"), "severity": r.get("severity"), "events": r.get("events"), "overlays": r.get("overlays"), "shelters": r.get("shelters"), "computed_at": r.get("computed_at"), "needs": r.get("needs")})
     eq = None
     if equity is not None:
         eq = {"status": equity["status"], "warnings": equity["warnings"], "data": equity["data"]}
