@@ -89,6 +89,51 @@ def sgis_reference(token: str, adm_cd: str, year: str = "2023") -> dict | None:
             "aged_child_idx": pop.get("aged_child_idx"), "avg_age": pop.get("avg_age"), "household_cnt": (hh or {}).get("household_cnt"), "avg_family_member_cnt": (hh or {}).get("avg_family_member_cnt")}
 
 
+def reallocation(project: dict, key: str) -> dict | None:
+    """다음 집행 순위 시뮬레이션 — 같은 대지(후보군)의 공동주택 동을 건축물대장 표제부로 모아
+    '지붕 100 m²당 세대수(효율)' 내림차순, 동률이면 오래된 순으로 줄 세운다(가중치 없는 명시적 규칙).
+    단가(params.unit_cost_krw_m2)가 있으면 누적 비용과 예산 안에 드는 동을 표시하고, 없으면 누적 지붕면적만 낸다."""
+    cand = project.get("candidates")
+    if not cand or not key:
+        return None
+    items = fetch_title(cand, key)
+    if items is None:
+        return {"error": "후보군 건축물대장 조회 실패"}
+    treated = {b.get("dong") for b in project.get("beneficiaries", [])}
+    controls = {c.get("dong") for c in project.get("controls", [])}
+    prm = project.get("params", {}); unit = prm.get("unit_cost_krw_m2"); budget = prm.get("reallocation_budget_krw")
+    rows = []
+    for t in items:
+        purpose = (t.get("mainPurpsCdNm") or "")
+        if "공동주택" not in purpose and "아파트" not in purpose:
+            continue
+        hh = int(t.get("hhldCnt") or 0); area = float(t.get("archArea") or 0)
+        if hh <= 0 or area <= 0:
+            continue
+        yr = str(t.get("useAprDay", ""))[:4]
+        dong = (t.get("dongNm") or "").strip()
+        rows.append({"dong": dong, "households": hh, "roof_area_m2": round(area, 1), "households_per_100m2": round(100 * hh / area, 2),
+                     "age_years": (dt.date.today().year - int(yr)) if yr.isdigit() else None, "floors": t.get("grndFlrCnt"),
+                     "status": "treated" if dong in treated else ("control" if dong in controls else "candidate")})
+    rows.sort(key=lambda r: (-r["households_per_100m2"], -(r["age_years"] or 0)))
+    cum_a = cum_h = cum_c = 0.0; within = []
+    for i, r in enumerate(rows, 1):
+        r["rank"] = i
+        if r["status"] == "treated":
+            r["cum_roof_area_m2"] = r["cum_households"] = r["cum_cost_krw"] = None; continue
+        cum_a += r["roof_area_m2"]; cum_h += r["households"]
+        r["cum_roof_area_m2"] = round(cum_a, 1); r["cum_households"] = int(cum_h)
+        if unit:
+            cum_c += r["roof_area_m2"] * float(unit); r["cum_cost_krw"] = int(cum_c)
+            if budget and cum_c <= float(budget):
+                within.append(r["dong"])
+        else:
+            r["cum_cost_krw"] = None
+    return {"rule": "지붕 100 m²당 세대수 내림차순(동률이면 사용승인 오래된 순). 가중치 합성 없이 두 열을 그대로 공개한다.",
+            "unit_cost_krw_m2": unit, "budget_krw": budget, "within_budget": within, "rows": rows,
+            "note": "세대수·건축면적·사용승인일은 건축물대장 표제부 실측값. 단가는 입력값(가정)이며 미입력 시 누적 지붕면적까지만 제시한다."}
+
+
 def run(project: dict) -> dict:
     bens = project.get("beneficiaries", [])
     key = config.KEYS["DATA_GO_KR_SERVICE_KEY"]
@@ -130,7 +175,7 @@ def run(project: dict) -> dict:
                         "households_total": metric((sum(r["households"] or 0 for r in rows) or None), "OBSERVED", "세대", n=len(rows)),
                         "jurisdiction_oldage_support": metric((float(ref["oldage_suprt_per"]) if ref and ref.get("oldage_suprt_per") not in (None, "N/A") else None), "OBSERVED", "%", note=f"SGIS {ref['adm_nm']} {ref['year']} 노년부양비" if ref else "SGIS 관할 코드 미확인"),
                         "jurisdiction_aging_index": metric((float(ref["aged_child_idx"]) if ref and ref.get("aged_child_idx") not in (None, "N/A") else None), "OBSERVED", "", note="노령화지수(65세 이상/0~14세×100)" if ref else "")},
-            "reference": ref}
+            "reference": ref, "reallocation": reallocation(project, key)}
     if failed:
         warnings.append(f"조회 실패 {len(failed)}건: {failed}")
     return ok(data, warnings)

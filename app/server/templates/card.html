@@ -92,6 +92,11 @@
     <div style="font-size:12px;color:var(--muted);margin-top:6px">지표 설계: {{ card.equity.data.design.indicators|join(", ") }} · 단위: {{ card.equity.data.design.unit }}</div>
     {% else %}
     <table><tr><th>지표</th><th class="num">값</th><th>n</th><th>출처</th></tr>{% for k,mt in card.equity.data.metrics.items() %}<tr><td>{{ k }}</td><td class="num">{{ mt.value if mt.value is not none else "측정 불가" }}</td><td>{{ mt.n or "" }}</td><td><span class="badge {{ mt.badge }}">{{ card.badges[mt.badge] }}</span></td></tr>{% endfor %}</table>
+    {% set ra = card.equity.data.reallocation %}{% if ra and ra.rows %}
+    <div style="font-size:12px;font-weight:700;margin-top:10px">다음 집행 순위 시뮬레이션 <span style="font-weight:400;color:var(--muted)">— {{ ra.rule }}</span></div>
+    <table><tr><th>순위</th><th>동</th><th class="num">세대</th><th class="num">지붕 m²</th><th class="num">세대/100m²</th><th class="num">누적 세대</th><th class="num">누적 지붕 m²</th><th>상태</th></tr>
+    {% for r in ra.rows %}<tr><td class="num">{{ r.rank }}</td><td>{{ r.dong }}</td><td class="num">{{ r.households }}</td><td class="num">{{ r.roof_area_m2 }}</td><td class="num">{{ r.households_per_100m2 }}</td><td class="num">{{ r.cum_households if r.cum_households is not none else "—" }}</td><td class="num">{{ r.cum_roof_area_m2 if r.cum_roof_area_m2 is not none else "—" }}</td><td>{{ {"treated":"시공","control":"대조","candidate":"후보"}[r.status] }}</td></tr>{% endfor %}</table>
+    <div style="font-size:11px;color:var(--muted)">{{ ra.note }}</div>{% endif %}
     {% endif %}
   {% else %}<div class="warn">형평성 감사가 실행되지 않았다.</div>{% endif %}
 

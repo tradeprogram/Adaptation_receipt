@@ -94,3 +94,9 @@ app/
 - **열(가양8단지)**: 검증 격자를 AOI 둘레 약 1.4 km까지 넓혀 한 번에 읽고(`params.context_pad_lon/lat`), 시공 전·후 여름 지표면온도 중앙값과 전후 차이를 오버레이 PNG(`lst_before/after/diff.png`)로 만든다(`overlay_png.py`). 통계는 종전대로 처리·대조 폴리곤 마스크로만 뽑는다. 카드에 `shelters`(AOI 안 무더위쉼터 목록)가 실려 지도에 점·팝업으로 표시된다. 처리(갈색 실선)·대조(녹색 점선) 폴리곤은 사업 대장의 `geometry.treated/control`을 그대로 그린다.
 - **침수(부여)**: 2단계 침수 범위를 Sentinel-1 RTC(`sentinel-1-rtc`, 익명 SAS 가능 실측)로 구현. A/B 사건의 첫 패스 VV(dB)를 같은 상대궤도 건기 기준선 중앙값(사건 전 75~4일, 모자라면 사건 후 6~75일로 보충 — S1C 궤도 RTC는 2025-07-18부터 존재)과 비교해 `VV<−16 dB & 기준선 대비 −3 dB` 화소를 침수로 분류, 기준선 자체가 −16 dB 미만이면 상시 수역. 시기별 합집합 면적·전후 차이와 `flood_before/after/change.png`를 낸다. 판정 `reduced`(−10% 이하) / `not_reduced`. 실측(부여): 정비 전 149 ha(2023-06-29·09-20) → 후 182 ha(2025-07-16, 3h 강우 133 mm vs 80 mm) → 미감소. 2025-09-09 S1C 장면은 읽기 실패로 `stage2.error`에 남김.
 - 프런트: 오버레이 버튼을 모듈 결과의 `overlays` 키로 동적 생성하고 범례(`overlays.legend`)를 지도 도구 옆에 표시. 기상 관측소(`kma_station`) 점 팝업에 사건별 1h/3h 강우.
+
+
+## 2026-10-15 재배분 시뮬레이션 · 강우 보정 · 검정력 사전 설계
+- **재배분 시뮬레이션**(`equity.reallocation`): 사업 대장의 `candidates`(같은 대지 지번)로 건축물대장 표제부를 모아 공동주택 동을 '지붕 100 m²당 세대수' 내림차순(동률이면 오래된 순)으로 줄 세운다. 가중치 합성 없음. `params.unit_cost_krw_m2`가 있으면 누적 비용과 `params.reallocation_budget_krw` 안의 동을 표시하고, 없으면 누적 지붕면적까지만. 카드 `equity.data.reallocation`, 대시보드 형평성 칸 표, 인쇄 카드, 채팅 근거('재배분')에 반영. 실측(가양8단지 9개 동): 809동 240세대 11.4세대/100 m² 1순위, 시공된 801·804동은 6·8순위.
+- **침수 강우 보정**(`verify_flood`): 사건별 침수 ha ÷ 최대 3시간 강우(mm)의 시기별 중앙값(`flooded_ha_per_mm_before/after`, `flooded_change_pct_rain_adjusted`). 판정은 보정값 우선. 부여: 1.10 → 1.37 ha/mm(+24%) → 미감소 유지.
+- **검정력 사전 설계**(`verify_heat`): `treated_area_ha`, `area_for_mde_1c_ha`, `area_for_mde_05c_ha`(n = 2((zα+zβ)σ/δ)², σ = 대조 MAD 기반, `design.control_sd_c`). 가양: 0.72 ha → MDE 1.65℃, 1℃ 검출에 1.95 ha, 0.5℃에 7.8 ha. 그림은 `scripts/fig_power_curve.py` → `figures/fig_power_curve.png`.
