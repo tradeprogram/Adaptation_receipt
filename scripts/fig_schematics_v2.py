@@ -86,14 +86,16 @@ header(bg, 1, H - 4.0, 18, 3.4, "입력 자료"); header(bg, 22, H - 4.0, 53, 3.
 # 입력 3종(세로 스택)
 ty = H - 11.2
 para(bg, 1.5, ty, 15, 5.6, 1.6, PASTEL[2]); boxes_log.append((bg.text(1.5 + 8.3, ty + 2.8, "사업 대장\n위치, 기간, 예산", fontsize=T_SMALL, ha="center", va="center", linespacing=1.3, zorder=3), (1.5, ty, 16.6, 5.6)))
-im = Image.open(RES / "fire-uiseong-2025/pre.png").convert("RGB"); im.thumbnail((700, 500)); arr = np.asarray(im)
-sx, sy, sw, sh = 1.5, ty - 10.2, 15, 6.6; skew = sh * math.tan(math.radians(16))
-for k in (2, 1):
-    para(bg, sx + 0.8 * k, sy + 0.8 * k, sw, sh, skew, "white", ec="#8C8C8C", z=1)
-tr = Affine2D().translate(-sx, -sy).skew_deg(16, 0).translate(sx, sy) + bg.transData
-bg.imshow(arr, extent=(sx, sx + sw, sy, sy + sh), transform=tr, zorder=2, interpolation="antialiased", aspect="auto")
-para(bg, sx, sy, sw, sh, skew, "none", ec=GREY_D, z=3)
-bg.text(sx + sw / 2 + 0.8, sy - 1.0, "위성 아카이브\nSentinel-1/2, Landsat", fontsize=T_SMALL, ha="center", va="top", linespacing=1.25, color=GREY_D)
+# 위성 썸네일: 기울임과 겹침 상자 없이, 상자 비율(16.6×7.0)에 맞춰 가운데를 잘라 넣고 가는 테두리만 두른다
+sx, sy, sw, sh = 1.5, ty - 10.4, 16.6, 7.0
+im0 = Image.open(RES / "fire-uiseong-2025/pre.png").convert("RGB"); g = np.asarray(im0.convert("L"))
+cols = np.where(g.mean(axis=0) > 12)[0]; rows_ = np.where(g.mean(axis=1) > 12)[0]            # 무자료(검은 띠) 제외한 유효 범위
+im = im0.crop((int(cols[0]) + 4, int(rows_[0]) + 4, int(cols[-1]) - 4, int(rows_[-1]) - 4)); iw, ih = im.size; target = sw / sh
+cw, ch = (int(ih * target), ih) if iw / ih > target else (iw, int(iw / target))   # 넓으면 폭을, 좁으면 높이를 잘라 비율을 맞춘다
+im = im.crop(((iw - cw) // 2, (ih - ch) // 2, (iw - cw) // 2 + cw, (ih - ch) // 2 + ch)); im.thumbnail((900, 400)); arr = np.asarray(im)
+bg.imshow(arr, extent=(sx, sx + sw, sy, sy + sh), zorder=2, interpolation="antialiased", aspect="auto")
+bg.add_patch(patches.Rectangle((sx, sy), sw, sh, fc="none", ec=GREY_D, lw=0.7, zorder=3))
+bg.text(sx + sw / 2, sy - 1.0, "위성 아카이브\nSentinel-1/2, Landsat", fontsize=T_SMALL, ha="center", va="top", linespacing=1.25, color=GREY_D)
 py = sy - 10.2
 para(bg, 1.5, py, 15, 5.6, 1.6, PASTEL[1]); boxes_log.append((bg.text(1.5 + 8.3, py + 2.8, "수혜 대상 속성\n건축물대장, SGIS", fontsize=T_SMALL, ha="center", va="center", linespacing=1.3, zorder=3), (1.5, py, 16.6, 5.6)))
 for yy in (ty + 2.8, sy + sh / 2, py + 2.8):
@@ -107,9 +109,10 @@ r1, r2 = H - 5.2 - gy - bh, H - 5.2 - 2 * gy - 2 * bh
 frame(bg, 22, r2 - gy - 5.4 - 1.4, 53, (H - 4.6) - (r2 - gy - 5.4 - 1.4), "")
 proc(bg, x1, r1, bw, bh, "1. 위성 지표 산출\n식생지수, 지표면온도, 침수 범위", fs=T_SMALL)
 proc(bg, x2, r1, bw, bh, "2. 기준선과 대조구 설정\n같은 궤도, 같은 계절, 인접 구역", fs=T_SMALL)
-bg.add_patch(patches.Rectangle((x1, r2), bw, bh, fc="white", ec=GREY_D, lw=0.7, zorder=2))
-hl(bg, x1 + bw / 2, r2 + bh / 2, "3. 이중차분과 신뢰구간\n검출가능최소효과", fs=T_SMALL, ha="center")
-proc(bg, x2, r2, bw, bh, "4. 형평성 감사\n노후도, 고령 비율, 집행 순위", fs=T_SMALL)
+# 아래 줄은 오른쪽(3) → 왼쪽(4) 순서로 두어 화살표 흐름 1→2→3→4→조립과 번호가 일치하게 한다
+bg.add_patch(patches.Rectangle((x2, r2), bw, bh, fc="white", ec=GREY_D, lw=0.7, zorder=2))
+hl(bg, x2 + bw / 2, r2 + bh / 2, "3. 이중차분과 신뢰구간\n검출가능최소효과", fs=T_SMALL, ha="center")
+proc(bg, x1, r2, bw, bh, "4. 형평성 감사\n노후도, 고령 비율, 집행 순위", fs=T_SMALL)
 ny = r2 - gy - 5.4
 proc(bg, x1, ny, 2 * bw + gx, 5.4, "성과 카드 조립\n출처 배지(실측, 계산, 규칙, 가정), 판정(검출, 미검출, 측정 불가)", fs=T_SMALL, fc=NAVY, ec=NAVY, tc="white", weight="bold")
 line(bg, [(x1 + bw, r1 + bh / 2), (x2, r1 + bh / 2)])
