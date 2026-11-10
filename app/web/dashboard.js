@@ -153,7 +153,17 @@
     const eq = c.equity; const eb = $("#equityBody");
     if (!eq) eb.innerHTML = `<div class="errata">형평성 감사 미실행</div>`;
     else if (eq.status !== "ok") eb.innerHTML = `<div class="errata">${eq.warnings.join("<br>")}</div><p class="meta">지표 설계: ${eq.data.design.indicators.join(" · ")}</p>`;
-    else eb.innerHTML = `<table class="tbl">${Object.entries(eq.data.metrics).map(([k, m]) => `<tr><td>${k}</td><td class="num">${fmt(m.value, m.unit)}</td><td><span class="src ${m.badge}">${SRC[m.badge]}</span></td></tr>`).join("")}</table>`;
+    else {
+      eb.innerHTML = `<table class="tbl">${Object.entries(eq.data.metrics).map(([k, m]) => `<tr><td>${k}</td><td class="num">${fmt(m.value, m.unit)}</td><td><span class="src ${m.badge}">${SRC[m.badge]}</span></td></tr>`).join("")}</table>`;
+      const ra = eq.data.reallocation;
+      if (ra && ra.rows?.length) {
+        const ST = { treated: "시공", control: "대조", candidate: "후보" };
+        eb.insertAdjacentHTML("beforeend", `<h3 class="sub-h">다음 집행 순위 시뮬레이션 <small>${ra.rule}</small></h3>
+          <table class="tbl realloc"><tr><th>순위</th><th>동</th><th class="num">세대</th><th class="num">지붕 m²</th><th class="num">세대/100m²</th><th class="num">누적 세대</th><th class="num">${ra.unit_cost_krw_m2 ? "누적 비용" : "누적 지붕 m²"}</th><th>상태</th></tr>` +
+          ra.rows.map((r) => `<tr class="${r.status}"><td class="num">${r.rank}</td><td>${r.dong}</td><td class="num">${r.households}</td><td class="num">${r.roof_area_m2.toLocaleString("ko-KR")}</td><td class="num">${r.households_per_100m2}</td><td class="num">${r.cum_households ?? "—"}</td><td class="num">${ra.unit_cost_krw_m2 ? (r.cum_cost_krw != null ? r.cum_cost_krw.toLocaleString("ko-KR") + "원" : "—") : (r.cum_roof_area_m2 != null ? r.cum_roof_area_m2.toLocaleString("ko-KR") : "—")}</td><td><span class="mark ${r.status === "treated" ? "detected" : (r.status === "control" ? "undetected" : "")}">${ST[r.status]}</span></td></tr>`).join("") +
+          `</table><p class="meta">${ra.note}${ra.within_budget?.length ? ` 예산 ${ra.budget_krw.toLocaleString("ko-KR")}원 안: ${ra.within_budget.join(", ")}` : ""}</p>`);
+      }
+    }
     $("#limitsBlock").hidden = !(mod.limitations || []).length; $("#limitsList").innerHTML = (mod.limitations || []).map((l) => `<li>${l}</li>`).join("");
     const sc = mod.scenes || []; $("#scenesBlock").hidden = !sc.length; $("#scenesCount").textContent = sc.length ? `장면 ${sc.length}${mod.failed?.length ? ` · 실패 ${mod.failed.length}` : ""}` : "";
     $("#scenesTable").innerHTML = `<tr><th>시점</th><th>관측일</th><th>장면</th><th>기준선</th><th class="num">구름%</th><th class="num">유효%</th></tr>` + sc.map((s) => `<tr><td>${s.label ?? s.year ?? ""}</td><td class="num">${s.date ?? "없음"}</td><td>${(s.ids || [s.id]).join("<br>")}</td><td class="num">${s.processing_baseline ?? ""}</td><td class="num">${s.cloud_cover != null ? s.cloud_cover.toFixed(1) : ""}</td><td class="num">${s.valid_pct ?? ""}</td></tr>`).join("") + (mod.failed || []).map((f) => `<tr><td colspan="6" class="none">실패: ${f.label || f.year || f.event?.name || ""} — ${f.error}</td></tr>`).join("");

@@ -2,7 +2,7 @@
  "status": "ok",
  "module": "flood",
  "project_id": "flood-buyeo-drainage",
- "computed_at": "2026-10-12T18:36:59",
+ "computed_at": "2026-10-15T20:01:14",
  "design": {
   "collection": "sentinel-1-grd",
   "grades": {
@@ -74,6 +74,30 @@
    "n": null,
    "measured": true,
    "note": "정비 전 대비 변화율"
+  },
+  "flooded_ha_per_mm_before": {
+   "value": 1.103,
+   "badge": "MODEL",
+   "unit": "ha/mm",
+   "n": 2,
+   "measured": true,
+   "note": "사건별 침수 ha ÷ 최대 3시간 강우(mm)의 중앙값 — 정비 전"
+  },
+  "flooded_ha_per_mm_after": {
+   "value": 1.366,
+   "badge": "MODEL",
+   "unit": "ha/mm",
+   "n": 1,
+   "measured": true,
+   "note": "같은 자(ha/mm)로 잰 정비 후"
+  },
+  "flooded_change_pct_rain_adjusted": {
+   "value": 23.8,
+   "badge": "MODEL",
+   "unit": "%",
+   "n": null,
+   "measured": true,
+   "note": "강우 보정 변화율(ha/mm 기준). 표본이 적어 사건 1건의 영향이 크다"
   }
  },
  "overlays": {
@@ -139,7 +163,8 @@
     "permanent_water_ha": 1528.7,
     "valid_pct": 100.0,
     "hours_after_peak": 3.5
-   }
+   },
+   "ha_per_mm": 0.869
   },
   {
    "event_peak": "2023-07-10T23:00",
@@ -229,7 +254,8 @@
     "permanent_water_ha": 1227.0,
     "valid_pct": 100.0,
     "hours_after_peak": 23.5
-   }
+   },
+   "ha_per_mm": 1.338
   },
   {
    "event_peak": "2025-07-16T14:00",
@@ -278,7 +304,8 @@
     "permanent_water_ha": 1360.6,
     "valid_pct": 100.0,
     "hours_after_peak": 55.5
-   }
+   },
+   "ha_per_mm": 1.366
   },
   {
    "event_peak": "2025-09-06T15:00",
@@ -335,13 +362,14 @@
    },
    "stage2": {
     "error": "RuntimeError: band vv unreadable for ['S1C_IW_GRDH_1SDV_20250909T214005_20250909T214030_004053_0080EF_rtc', 'S1C_IW_GRDH_1SDV_20250909T213940_20250909T214005_004053_0080EF_rtc']"
-   }
+   },
+   "ha_per_mm": null
   }
  ],
  "failed": [],
  "verdict": {
   "code": "not_reduced",
-  "text": "침수 추정 범위 정비 전 149 ha → 후 182 ha (+22%) (최대 3시간 강우 전 80 mm · 후 133 mm) — 감소를 확인하지 못함."
+  "text": "침수 추정 범위 정비 전 149 ha → 후 182 ha (+22%) (최대 3시간 강우 전 80 mm · 후 133 mm). 강우 보정(ha/mm) 전 1.10 → 후 1.37 (+24%). — 감소를 확인하지 못함."
  },
  "limitations": [
   "관측가능성은 통과 여부이며 실제 촬영·구름 무관(SAR) 조건만 반영한다.",

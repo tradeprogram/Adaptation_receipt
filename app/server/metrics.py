@@ -92,3 +92,12 @@ def summarize(a) -> dict:
     q25, q75 = np.percentile(x, [25, 75])
     return {"n": int(x.size), "median": float(np.median(x)), "mean": float(np.mean(x)),
             "q25": float(q25), "q75": float(q75), "max": float(np.max(x))}
+
+
+def robust_sd(baseline) -> float | None:
+    """기준선의 MAD 기반 σ 근사(검정력 곡선용)."""
+    b = _finite(baseline)
+    if b.size < 2:
+        return None
+    sd = float(np.median(np.abs(b - np.median(b)))) * MAD_TO_SD
+    return sd or None

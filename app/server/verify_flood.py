@@ -146,6 +146,18 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
             stage2_done += 1
             union[o["phase"]] = fl if union[o["phase"]] is None else (union[o["phase"]] | fl)
             perm_any = pm if perm_any is None else (perm_any | pm)
+    # 강우 보정: 사건별 침수 ha를 최대 3시간 강우(mm)로 나눈 값(ha/mm)의 시기별 중앙값 — 강도가 다른 사건을 같은 자로 잰다
+    for o in ab:
+        s2 = o.get("stage2") or {}; r3 = (o.get("rain") or {}).get("max_3h")
+        o["ha_per_mm"] = round(s2["flooded_ha"] / r3, 3) if (s2.get("flooded_ha") is not None and r3) else None
+    def _med(ph):
+        v = sorted(o["ha_per_mm"] for o in ab if o["phase"] == ph and o.get("ha_per_mm") is not None)
+        if not v:
+            return None
+        m = len(v) // 2
+        return round(v[m] if len(v) % 2 else (v[m - 1] + v[m]) / 2, 3)
+    hpm_b, hpm_a = _med("before"), _med("after")
+    norm_pct = round(100 * (hpm_a - hpm_b) / hpm_b, 1) if (hpm_a is not None and hpm_b) else None
     px_ha = res * res / 10_000
     ha_b = round(float(union["before"].sum() * px_ha), 1) if union["before"] is not None else None
     ha_a = round(float(union["after"].sum() * px_ha), 1) if union["after"] is not None else None
@@ -179,10 +191,13 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
             "flooded_ha_after": metric(ha_a, "MODEL", "ha", n=sum(1 for o in ab if o["phase"] == "after" and o.get("stage2", {}).get("flooded_ha") is not None), note="정비 후 A/B 사건 침수 추정 범위 합집합"),
             "flooded_change_ha": metric(change_ha, "MODEL", "ha", note="정비 후 − 정비 전. 사건 강우 강도 차이는 보정하지 않았다"),
             "flooded_change_pct": metric(change_pct, "MODEL", "%", note="정비 전 대비 변화율"),
+            "flooded_ha_per_mm_before": metric(hpm_b, "MODEL", "ha/mm", n=sum(1 for o in ab if o["phase"] == "before" and o.get("ha_per_mm") is not None), note="사건별 침수 ha ÷ 최대 3시간 강우(mm)의 중앙값 — 정비 전"),
+            "flooded_ha_per_mm_after": metric(hpm_a, "MODEL", "ha/mm", n=sum(1 for o in ab if o["phase"] == "after" and o.get("ha_per_mm") is not None), note="같은 자(ha/mm)로 잰 정비 후"),
+            "flooded_change_pct_rain_adjusted": metric(norm_pct, "MODEL", "%", note="강우 보정 변화율(ha/mm 기준). 표본이 적어 사건 1건의 영향이 크다"),
         },
         "overlays": overlays,
         "events": out, "failed": failed,
-        "verdict": _verdict(ready, ha_b, ha_a, change_pct, ab),
+        "verdict": _verdict(ready, ha_b, ha_a, change_pct, ab, hpm_b, hpm_a, norm_pct),
         "limitations": ["관측가능성은 통과 여부이며 실제 촬영·구름 무관(SAR) 조건만 반영한다.",
                         "침수 범위는 첫 통과 시점의 수면만 잡는다. 정점 후 2~3일이 지난 B등급 사건은 이미 물이 빠진 구역을 놓칠 수 있다.",
                         "VV 후방산란 임계는 잔잔한 수면 기준이며, 바람에 거친 수면·침수된 작물은 과소, 평탄한 포장면은 과대 추정될 수 있다.",
@@ -190,14 +205,16 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
     }
 
 
-def _verdict(ready: bool, ha_b, ha_a, change_pct, ab: list[dict]) -> dict:
+def _verdict(ready: bool, ha_b, ha_a, change_pct, ab: list[dict], hpm_b=None, hpm_a=None, norm_pct=None) -> dict:
     if ha_b is not None and ha_a is not None:
         rb = max([(o.get("rain") or {}).get("max_3h", 0) for o in ab if o["phase"] == "before"] or [0])
         ra = max([(o.get("rain") or {}).get("max_3h", 0) for o in ab if o["phase"] == "after"] or [0])
         rain = f" (최대 3시간 강우 전 {rb:.0f} mm · 후 {ra:.0f} mm)" if (rb or ra) else ""
-        if change_pct is not None and change_pct <= -10:
-            return {"code": "reduced", "text": f"침수 추정 범위 정비 전 {ha_b:,.0f} ha → 후 {ha_a:,.0f} ha ({change_pct:+.0f}%){rain} — 침수 범위 감소."}
-        return {"code": "not_reduced", "text": f"침수 추정 범위 정비 전 {ha_b:,.0f} ha → 후 {ha_a:,.0f} ha ({change_pct:+.0f}%){rain} — 감소를 확인하지 못함."}
+        adj = f" 강우 보정(ha/mm) 전 {hpm_b:.2f} → 후 {hpm_a:.2f} ({norm_pct:+.0f}%)." if (hpm_b is not None and hpm_a is not None and norm_pct is not None) else ""
+        key_pct = norm_pct if norm_pct is not None else change_pct
+        if key_pct is not None and key_pct <= -10:
+            return {"code": "reduced", "text": f"침수 추정 범위 정비 전 {ha_b:,.0f} ha → 후 {ha_a:,.0f} ha ({change_pct:+.0f}%){rain}.{adj} — 침수 범위 감소."}
+        return {"code": "not_reduced", "text": f"침수 추정 범위 정비 전 {ha_b:,.0f} ha → 후 {ha_a:,.0f} ha ({change_pct:+.0f}%){rain}.{adj} — 감소를 확인하지 못함."}
     if ready:
         return {"code": "ready", "text": "2단계(침수 범위 비교) 실행 조건은 충족했으나 한쪽 시기의 침수 범위를 산출하지 못했다."}
     return {"code": "waiting", "text": "정비 전 또는 후에 위성으로 확인 가능한(A/B) 사건이 없어 침수 범위 비교를 수행하지 않는다. 현장조사 결과로 대체한다."}

@@ -22,7 +22,7 @@ TOOLS = {
     "severity": ["등급", "피해등급", "dnbr", "강", "중강"],
     "scenes": ["장면", "매니페스트", "재현", "궤도", "구름", "위성", "sentinel", "landsat", "관측"],
     "events": ["호우", "사건", "침수", "관측가능", "등급 a", "등급 b", "등급 c"],
-    "equity": ["형평", "취약", "고령", "노후", "수혜", "1인가구"],
+    "equity": ["형평", "취약", "고령", "노후", "수혜", "1인가구", "재배분", "다음 예산", "우선순위", "어느 동", "순위"],
     "limits": ["한계", "주의", "못", "불확실", "가정"],
     "calendar": ["기한", "마감", "4월", "이행점검", "보고서", "언제까지", "달력"],
     "keys": ["키", "api", "연동", "gemini", "sgis", "건축물대장"],
@@ -103,6 +103,10 @@ def run_tools(plan: list[str], card: dict, calendar: list[dict], keys: dict) -> 
             eq = card.get("equity")
             if eq and eq.get("status") == "ok":
                 evidence.append({"kind": "형평성", "title": "수혜 대상 취약도", "summary": json.dumps(eq["data"].get("metrics"), ensure_ascii=False)[:300]})
+                ra = eq["data"].get("reallocation")
+                if ra and ra.get("rows"):
+                    top = [r for r in ra["rows"] if r["status"] != "treated"][:3]
+                    evidence.append({"kind": "재배분", "title": "다음 집행 순위(시뮬레이션)", "summary": f"규칙: {ra['rule']} 상위: " + "; ".join(f"{r['rank']}위 {r['dong']} {r['households']}세대 지붕 {r['roof_area_m2']} m² ({r['households_per_100m2']}세대/100m², {r['age_years']}년)" for r in top) + (f" 예산 {ra['budget_krw']:,}원 안: {', '.join(ra['within_budget'])}" if ra.get("within_budget") else " (단가 미입력 — 누적 면적만)")})
             else:
                 status, detail = "miss", " / ".join((eq or {}).get("warnings") or ["미실행"])
                 evidence.append({"kind": "형평성", "title": "키 필요·입력 대기", "summary": detail})

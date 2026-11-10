@@ -91,6 +91,11 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
     did = metrics.did_effect(tp, ta, cp, ca)
     ci = metrics.bootstrap_ci(ta - np.median(tp) if tp.size else ta, ca - np.median(cp) if cp.size else ca) if (tp.size and cp.size) else None
     mde = metrics.mde(cp, int(tmask.sum()))
+    # 검증 가능 최소 규모: 같은 대조 분산에서 MDE가 1℃·0.5℃가 되려면 처리 화소가 몇 개(면적 ha) 필요한가 — n = 2((zα+zβ)σ/δ)²
+    sd_c = metrics.robust_sd(cp) if hasattr(metrics, "robust_sd") else None
+    px_ha = res * res / 10_000
+    area_1c = round(2 * ((1.96 + 0.84) * sd_c / 1.0) ** 2 * px_ha, 2) if sd_c else None
+    area_05c = round(2 * ((1.96 + 0.84) * sd_c / 0.5) ** 2 * px_ha, 2) if sd_c else None
     overlays = None
     try:
         sb = [a for y in years_before for a in ctx_stack.get(y, [])]; sa = [a for y in years_after for a in ctx_stack.get(y, [])]
@@ -118,7 +123,7 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
         "status": "partial" if failed else ("ok" if did["effect"] is not None else "unmeasured"),
         "module": "heat", "project_id": p["id"], "computed_at": dt.datetime.now().isoformat(timespec="seconds"),
         "design": {"collection": LS, "lst_formula": "DN*0.00341802+149.0 K", "qa_bits_masked": list(QA_BAD_BITS), "resolution_m": res, "season": "6/15~9/20", "epsg": epsg,
-                   "treated_px": int(tmask.sum()), "control_px": int(cmask.sum()), "context_bbox": ctx},
+                   "treated_px": int(tmask.sum()), "control_px": int(cmask.sum()), "context_bbox": ctx, "control_sd_c": (round(sd_c, 3) if sd_c else None)},
         "overlays": overlays,
         "metrics": {
             "did_effect_lst_c": metric(did["effect"], "MODEL", "℃", n=did["n"].get("treat_post"), note=did["reason"] or "(시공 후-전)-(대조 후-전), 여름 장면 중앙값"),
@@ -126,6 +131,9 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
             "ci95": metric(list(ci) if ci else None, "MODEL", "℃"),
             "mde_c": metric(mde, "ASSUMPTION", "℃", note="독립 화소 가정 근사"),
             "scenes_used": metric(len(scenes), "OBSERVED", "장면"),
+            "treated_area_ha": metric(round(int(tmask.sum()) * px_ha, 2), "OBSERVED", "ha", n=int(tmask.sum()), note="처리 폴리곤이 덮는 30 m 화소 면적"),
+            "area_for_mde_1c_ha": metric(area_1c, "ASSUMPTION", "ha", note="이 대조 분산에서 1℃ 효과를 검출하려면 필요한 처리 면적(독립 화소 가정, 80% 검정력)"),
+            "area_for_mde_05c_ha": metric(area_05c, "ASSUMPTION", "ha", note="0.5℃ 효과를 검출하려면 필요한 처리 면적"),
             "shelters_in_aoi": metric(sh["in_bbox"] if sh else None, "OBSERVED", "곳", n=sh["total"] if sh else None, note="재난안전데이터 공유플랫폼 무더위쉼터(DSSP-IF-10942) 중 AOI 안" if sh else "무더위쉼터 자료 없음(키·IP 등록 필요)"),
             "shelter_capacity_in_aoi": metric(sh["capacity_sum"] if sh else None, "OBSERVED", "명", note="AOI 안 쉼터 이용가능인원 합"),
         },
