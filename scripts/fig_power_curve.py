@@ -18,7 +18,7 @@ sd = r["design"]["control_sd_c"]; treated_ha = r["metrics"]["treated_area_ha"]["
 z = 1.96 + 0.84; px_ha = 0.09
 
 plt.rcParams.update({"font.family": "Malgun Gothic", "axes.unicode_minus": False, "font.size": 9})
-fig, ax = plt.subplots(figsize=(5.6, 2.9), dpi=200)
+fig, ax = plt.subplots(figsize=(6.8, 2.7), dpi=200)
 area = np.linspace(0.2, 12, 400)
 n = area / px_ha
 mde = z * sd * np.sqrt(2.0 / n)
@@ -29,7 +29,7 @@ for d, lab, c in ((1.0, "1℃", "#C9A227"), (0.5, "0.5℃", "#8a5a1e")):
     ax.plot([a_need], [d], "o", color=c, ms=5)
     ax.annotate(f"{lab} 검출에 {a_need:.2f} ha", (a_need, d), xytext=(8, 6), textcoords="offset points", color=c, fontsize=8.5)
 ax.plot([treated_ha], [mde_now], "s", color="#B03A2E", ms=6)
-ax.annotate(f"가양8단지 801·804동\n{treated_ha:.2f} ha → MDE {mde_now:.2f}℃", (treated_ha, mde_now), xytext=(14, 10), textcoords="offset points", color="#B03A2E", fontsize=8.5)
+ax.annotate(f"가양8단지 801, 804동\n{treated_ha:.2f} ha: MDE {mde_now:.2f}℃", (treated_ha, mde_now), xytext=(14, 10), textcoords="offset points", color="#B03A2E", fontsize=8.5)
 ax.set_xlabel("처리(시공) 면적 (ha)"); ax.set_ylabel("검출가능최소효과 (℃)")
 ax.set_xlim(0, 12); ax.set_ylim(0, 3.2); ax.grid(alpha=0.25, lw=0.5)
 ax.legend(loc="upper right", frameon=False, fontsize=8)

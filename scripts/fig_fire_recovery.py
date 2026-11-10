@@ -115,8 +115,8 @@ print("severity area ha", area)
 rgb = lambda r: np.clip(np.dstack([r["B04"], r["B03"], r["B02"]]) / 0.30, 0, 1)
 ext = [bbox[0], bbox[2], bbox[1], bbox[3]]
 
-fig = plt.figure(figsize=(7.2, 5.3), dpi=200)
-gs = fig.add_gridspec(2, 3, height_ratios=[1, 1.15], hspace=0.05, wspace=0.12)
+fig = plt.figure(figsize=(7.2, 4.1), dpi=200)
+gs = fig.add_gridspec(2, 3, height_ratios=[1, 1.0], hspace=0.08, wspace=0.10)
 ax1 = fig.add_subplot(gs[0, 0]); ax1.imshow(np.nan_to_num(rgb(stack[pre]), nan=1.0), extent=ext); ax1.set_title("(a) 산불 전 2025-03-14", fontsize=9)
 ax2 = fig.add_subplot(gs[0, 1]); ax2.imshow(np.nan_to_num(rgb(stack[post]), nan=1.0), extent=ext); ax2.set_title("(b) 진화 직후 2025-04-08", fontsize=9)
 ax3 = fig.add_subplot(gs[0, 2])
@@ -138,9 +138,9 @@ for i, r in enumerate(ratio):
 ax4.axvline(0.5, color="k", lw=0.8, ls=":"); ax4.text(0.52, ax4.get_ylim()[1] * 0.98 if False else 0.86, "발화 2025-03-22", fontsize=7.5, va="top")
 ax4.set_xticks(xs); ax4.set_xticklabels(dates, fontsize=8); ax4.set_ylabel("NDVI (중앙값)", fontsize=9)
 ax4.set_ylim(0, 0.9); ax4.grid(alpha=0.25)
-ax4.set_title("(d) 피해지 식생 회복 추적 — 숫자는 피해지/대조지 NDVI 비(=회복률)", fontsize=9)
+ax4.set_title("(d) 피해지 식생 회복 추적, 숫자는 피해지 대 대조지 NDVI 비(회복률)", fontsize=9)
 ax4.legend(fontsize=7.5, loc="lower right", frameon=False)
-fig.text(0.01, 0.005, "자료: Copernicus Sentinel-2 L2A (Microsoft Planetary Computer), 상대궤도 R103 동일 조건, 40 m 재표집, SCL 구름·그림자 마스킹. 피해등급 임계는 Key & Benson(2006).", fontsize=6.5, color="#444")
+fig.text(0.01, -0.01, "자료: Copernicus Sentinel-2 L2A(Microsoft Planetary Computer), 상대궤도 R103, 40 m 재표집, SCL 구름 및 그림자 마스킹, 피해등급 임계는 Key & Benson(2006)", fontsize=6.5, color="#444")
 fig.savefig(os.path.join(OUT, "fig_fire_recovery.png"), bbox_inches="tight")
 fig.savefig(os.path.join(OUT, "fig_fire_recovery.svg"), bbox_inches="tight")
 
