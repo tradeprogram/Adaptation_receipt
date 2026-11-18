@@ -107,11 +107,13 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
             scalar_png(med_b, out_dir / "lst_before.png", vmin, vmax, WARM); scalar_png(med_a, out_dir / "lst_after.png", vmin, vmax, WARM)
             scalar_png(diff, out_dir / "lst_diff.png", -3.0, 3.0, DIVERGE)
             u = f"/api/projects/{p['id']}/overlay/"
-            yb = "·".join(map(str, years_before)); ya = "·".join(map(str, years_after))
+            yb = ", ".join(map(str, years_before)); ya = ", ".join(map(str, years_after))
+            hexs = lambda stops: ["#%02x%02x%02x" % c for c in stops]
             overlays = {"lst_before": u + "lst_before.png", "lst_after": u + "lst_after.png", "lst_diff": u + "lst_diff.png", "bounds": ctx,
-                        "legend": {"lst_before": f"시공 전({yb}) 여름 지표면온도 중앙값 {vmin:.0f}~{vmax:.0f}℃ · 연함→진함",
-                                   "lst_after": f"시공 후({ya}) 여름 지표면온도 중앙값 {vmin:.0f}~{vmax:.0f}℃ · 연함→진함",
-                                   "lst_diff": "시공 후 − 시공 전 지표면온도 차이 −3(청)~+3℃(적) · 처리(갈색 실선)·대조(녹색 점선) 폴리곤"}}
+                        "legend": {"lst_before": {"label": "시공 전 온도", "type": "ramp", "query": "lst_before", "min": round(vmin, 1), "max": round(vmax, 1), "unit": "℃", "stops": hexs(WARM), "note": f"{yb}년 여름 지표면온도 중앙값"},
+                                   "lst_after": {"label": "시공 후 온도", "type": "ramp", "query": "lst_after", "min": round(vmin, 1), "max": round(vmax, 1), "unit": "℃", "stops": hexs(WARM), "note": f"{ya}년 여름 지표면온도 중앙값"},
+                                   "lst_diff": {"label": "전후 차이", "type": "ramp", "query": "lst_diff", "min": -3, "max": 3, "unit": "℃", "stops": hexs(DIVERGE), "note": "시공 후에서 시공 전을 뺀 값. 갈색 실선은 시공 동, 녹색 점선은 대조 동"}}}
+            stac.save_npz_atomic(out_dir / "layers.npz", bbox=np.array(ctx, dtype="float64"), lst_before=med_b.astype("float32"), lst_after=med_a.astype("float32"), lst_diff=diff.astype("float32"))
     except Exception as e:
         failed.append({"year": "overlay", "error": f"{type(e).__name__}: {e}"})
     try:
@@ -134,21 +136,21 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
             "treated_area_ha": metric(round(int(tmask.sum()) * px_ha, 2), "OBSERVED", "ha", n=int(tmask.sum()), note="처리 폴리곤이 덮는 30 m 화소 면적"),
             "area_for_mde_1c_ha": metric(area_1c, "ASSUMPTION", "ha", note="이 대조 분산에서 1℃ 효과를 검출하려면 필요한 처리 면적(독립 화소 가정, 80% 검정력)"),
             "area_for_mde_05c_ha": metric(area_05c, "ASSUMPTION", "ha", note="0.5℃ 효과를 검출하려면 필요한 처리 면적"),
-            "shelters_in_aoi": metric(sh["in_bbox"] if sh else None, "OBSERVED", "곳", n=sh["total"] if sh else None, note="재난안전데이터 공유플랫폼 무더위쉼터(DSSP-IF-10942) 중 AOI 안" if sh else "무더위쉼터 자료 없음(키·IP 등록 필요)"),
+            "shelters_in_aoi": metric(sh["in_bbox"] if sh else None, "OBSERVED", "곳", n=sh["total"] if sh else None, note="행정안전부 무더위쉼터 가운데 분석 범위 안" if sh else "무더위쉼터 자료 없음"),
             "shelter_capacity_in_aoi": metric(sh["capacity_sum"] if sh else None, "OBSERVED", "명", note="AOI 안 쉼터 이용가능인원 합"),
         },
         "shelters": (sh or {}).get("items", [])[:50],
         "scenes": scenes, "failed": failed, "verdict": _verdict(did["effect"], mde, ci),
-        "limitations": ["30 m 열적외(원 100 m) 해상도에서 단일 동 효과는 검출되기 어렵다. 블록 단위 폴리곤 권장.",
-                        "Landsat은 오전 통과라 야간 열섬을 보지 못한다.", "지표면온도는 기온·실내온도가 아니다."],
+        "limitations": ["30 m 해상도에서 단일 동의 효과는 검출되기 어렵다. 블록 단위 폴리곤을 권장한다.",
+                        "Landsat은 오전에 통과하므로 야간 열섬은 보지 못한다.", "지표면온도는 기온이나 실내온도가 아니다."],
     }
 
 
 def _verdict(effect, mde, ci) -> dict:
     if effect is None:
-        return {"code": "unmeasured", "text": "전후·처리/대조 네 집단 중 관측이 없는 집단이 있어 판정하지 않는다."}
+        return {"code": "unmeasured", "text": "전후 또는 처리와 대조 집단에 관측이 없어 판정하지 않는다."}
     if mde is not None and abs(effect) < mde:
-        return {"code": "undetected", "text": f"이중차분 {effect:+.2f}℃가 검출가능최소효과 {mde:.2f}℃ 미만 — 미검출."}
+        return {"code": "undetected", "text": f"이중차분 {effect:+.2f}℃는 검출가능최소효과 {mde:.2f}℃보다 작아 미검출이다. 이 규모로는 효과를 판정할 수 없다."}
     if ci is not None and ci[0] <= 0 <= ci[1]:
-        return {"code": "undetected", "text": "95% 신뢰구간이 0을 포함 — 미검출."}
-    return {"code": "detected", "text": f"시공 블록 지표면온도 이중차분 {effect:+.2f}℃."}
+        return {"code": "undetected", "text": "95% 신뢰구간이 0을 포함하여 미검출이다."}
+    return {"code": "detected", "text": f"시공 블록의 지표면온도가 대조 블록보다 {effect:+.2f}℃ 변했다."}

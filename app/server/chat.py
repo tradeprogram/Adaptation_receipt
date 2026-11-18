@@ -75,7 +75,7 @@ def run_tools(plan: list[str], card: dict, calendar: list[dict], keys: dict) -> 
         elif tool == "series":
             s = mod.get("series") or []
             if s:
-                evidence.append({"kind": "회복", "title": "피해지/대조지 NDVI 회복률", "summary": " → ".join(f"{x['label']} {x['recovery_ratio']:.2f}" if x.get("recovery_ratio") is not None else f"{x['label']} 측정 불가" for x in s)})
+                evidence.append({"kind": "회복", "title": "피해지/대조지 NDVI 회복률", "summary": ", ".join(f"{x['label']} {x['recovery_ratio']:.2f}" if x.get("recovery_ratio") is not None else f"{x['label']} 측정 불가" for x in s)})
             else:
                 status, detail = "miss", "시계열 없음"
         elif tool == "severity":
@@ -106,10 +106,10 @@ def run_tools(plan: list[str], card: dict, calendar: list[dict], keys: dict) -> 
                 ra = eq["data"].get("reallocation")
                 if ra and ra.get("rows"):
                     top = [r for r in ra["rows"] if r["status"] != "treated"][:3]
-                    evidence.append({"kind": "재배분", "title": "다음 집행 순위(시뮬레이션)", "summary": f"규칙: {ra['rule']} 상위: " + "; ".join(f"{r['rank']}위 {r['dong']} {r['households']}세대 지붕 {r['roof_area_m2']} m² ({r['households_per_100m2']}세대/100m², {r['age_years']}년)" for r in top) + (f" 예산 {ra['budget_krw']:,}원 안: {', '.join(ra['within_budget'])}" if ra.get("within_budget") else " (단가 미입력 — 누적 면적만)")})
+                    evidence.append({"kind": "재배분", "title": "다음 집행 순위(시뮬레이션)", "summary": f"규칙: {ra['rule']} 상위: " + "; ".join(f"{r['rank']}위 {r['dong']} {r['households']}세대 지붕 {r['roof_area_m2']} m² ({r['households_per_100m2']}세대/100m², {r['age_years']}년)" for r in top) + (f" 예산 {ra['budget_krw']:,}원 안: {', '.join(ra['within_budget'])}" if ra.get("within_budget") else " (단가 미입력, 누적 면적만)")})
             else:
                 status, detail = "miss", " / ".join((eq or {}).get("warnings") or ["미실행"])
-                evidence.append({"kind": "형평성", "title": "키 필요·입력 대기", "summary": detail})
+                evidence.append({"kind": "형평성", "title": "키 필요 또는 입력 대기", "summary": detail})
         elif tool == "limits":
             lim = mod.get("limitations") or []
             if lim:
@@ -119,7 +119,7 @@ def run_tools(plan: list[str], card: dict, calendar: list[dict], keys: dict) -> 
         elif tool == "calendar":
             nxt = sorted(calendar, key=lambda x: x["days_left"])[0] if calendar else None
             if nxt:
-                evidence.append({"kind": "기한", "title": nxt["name"], "summary": f"{nxt['due']} (D-{nxt['days_left']}) · {nxt['basis']} · 납품물 {nxt['deliverable']}"})
+                evidence.append({"kind": "기한", "title": nxt["name"], "summary": f"{nxt['due']} (D-{nxt['days_left']}), {nxt['basis']}, 납품물 {nxt['deliverable']}"})
             else:
                 status, detail = "miss", "달력 없음"
         elif tool == "keys":
@@ -149,7 +149,7 @@ def local_answer(card: dict, evidence: list[dict], intent: str) -> str:
     if lim:
         parts.append("한계: " + lim["summary"] + ".")
     if intent == "report_sentence" and ver:
-        parts.append(f"보고서 문장 예시 — \"위성 관측(Sentinel-2) 기반 사후 검증 결과 {ver['summary']}\"")
+        parts.append(f"보고서 문장 예시: \"위성 관측(Sentinel-2) 기반 사후 검증 결과 {ver['summary']}\"")
     if not config.KEYS["GEMINI_API_KEY"]:
         parts.append("설명 모델 키(GEMINI_API_KEY)가 없어 카드 수치를 그대로 요약했습니다.")
     return "\n".join(parts)
@@ -189,7 +189,7 @@ def handle_chat(payload: dict, card: dict, calendar: list[dict], keys: dict) -> 
     base = {"evidence": evidence[:6], "tool_trace": trace, "handoff": handoff, "actions": actions}
     key = config.KEYS["GEMINI_API_KEY"]
     if not key:
-        return {**base, "answer": fallback, "model": None, "source": "local", "warnings": ["GEMINI_API_KEY 없음 — 로컬 요약"]}
+        return {**base, "answer": fallback, "model": None, "source": "local", "warnings": ["GEMINI_API_KEY가 없어 로컬 요약으로 답했다"]}
     try:
         from google import genai
         client = genai.Client(api_key=key)
@@ -205,4 +205,4 @@ def handle_chat(payload: dict, card: dict, calendar: list[dict], keys: dict) -> 
             return {**base, "answer": fallback, "model": config.KEYS["GEMINI_MODEL"], "source": "local", "warnings": [f"모델 응답에 카드에 없는 수치({', '.join(bad[:3])})가 있어 로컬 요약으로 교체"]}
         return {**base, "answer": text, "model": config.KEYS["GEMINI_MODEL"], "source": "gemini", "warnings": []}
     except Exception as e:
-        return {**base, "answer": fallback, "model": None, "source": "local", "warnings": [f"모델 호출 실패({type(e).__name__}) — 로컬 요약"]}
+        return {**base, "answer": fallback, "model": None, "source": "local", "warnings": [f"모델 호출 실패({type(e).__name__}), 로컬 요약으로 답했다"]}

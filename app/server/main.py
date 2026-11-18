@@ -170,12 +170,42 @@ def chat_api(body: ChatIn):
 @app.get("/api/projects/{pid}/overlay/{name}")
 def overlay(pid: str, name: str):
     import re
-    if not re.fullmatch(r"[a-z_]+\.png", name):          # dnbr/pre/post, lst_before/after/diff, flood_before/after/change
+    if not re.fullmatch(r"[a-z0-9_]+\.png", name):       # dnbr/pre/post, lst_*, flood_*, flood_evt_YYYYMMDD
         raise HTTPException(404)
     p = config.RESULTS_DIR / pid / name
     if not p.exists():
         raise HTTPException(404, "overlay not computed")
     return FileResponse(p, media_type="image/png", headers={"Cache-Control": "no-store"})
+
+
+_layers_cache: dict[str, dict] = {}
+
+
+@app.get("/api/projects/{pid}/query")
+def query_pixel(pid: str, layer: str, lon: float, lat: float):
+    """지도 클릭 지점의 오버레이 값. 오버레이 PNG가 bbox에 선형으로 펼쳐지므로 같은 대응으로 격자 칸을 찾는다."""
+    import re
+    import numpy as np
+    if not re.fullmatch(r"[a-z0-9_]+", layer):
+        raise HTTPException(400, "bad layer")
+    path = config.RESULTS_DIR / pid / "layers.npz"
+    if not path.exists():
+        return ok({"layer": layer, "value": None, "available": False})
+    key = f"{pid}:{path.stat().st_mtime_ns}"
+    if key not in _layers_cache:
+        _layers_cache.clear()
+        with np.load(path) as z:
+            _layers_cache[key] = {k: z[k] for k in z.files}
+    L = _layers_cache[key]
+    if layer not in L:
+        return ok({"layer": layer, "value": None, "available": False})
+    b = L["bbox"]; a = L[layer]; h, w = a.shape[:2]
+    if not (b[0] <= lon <= b[2] and b[1] <= lat <= b[3]):
+        return ok({"layer": layer, "value": None, "available": True, "inside": False})
+    col = min(w - 1, int((lon - b[0]) / (b[2] - b[0]) * w)); row = min(h - 1, int((b[3] - lat) / (b[3] - b[1]) * h))
+    v = a[row, col]
+    val = None if (isinstance(v, (np.floating, float)) and not np.isfinite(v)) else (int(v) if a.dtype.kind in "iu" else round(float(v), 2))
+    return ok({"layer": layer, "value": val, "available": True, "inside": True, "kind": "class" if a.dtype.kind in "iu" else "value"})
 
 
 # ---------- 법정 달력 ----------

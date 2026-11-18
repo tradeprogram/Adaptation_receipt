@@ -2,7 +2,7 @@
  "status": "ok",
  "module": "flood",
  "project_id": "flood-buyeo-drainage",
- "computed_at": "2026-10-15T20:01:14",
+ "computed_at": "2026-11-18T18:31:47",
  "design": {
   "collection": "sentinel-1-grd",
   "grades": {
@@ -41,7 +41,7 @@
    "unit": "",
    "n": null,
    "measured": true,
-   "note": "정비 전·후 각각 A/B 사건 1건 이상이면 2단계 실행 가능"
+   "note": "정비 전과 후에 위성으로 확인 가능한 사건이 각 1건 이상이면 침수 범위를 비교한다"
   },
   "flooded_ha_before": {
    "value": 148.6,
@@ -65,7 +65,7 @@
    "unit": "ha",
    "n": null,
    "measured": true,
-   "note": "정비 후 − 정비 전. 사건 강우 강도 차이는 보정하지 않았다"
+   "note": "정비 후에서 정비 전을 뺀 값. 강우 강도 차이는 보정하지 않았다"
   },
   "flooded_change_pct": {
    "value": 22.3,
@@ -81,7 +81,7 @@
    "unit": "ha/mm",
    "n": 2,
    "measured": true,
-   "note": "사건별 침수 ha ÷ 최대 3시간 강우(mm)의 중앙값 — 정비 전"
+   "note": "정비 전 사건의 침수 ha를 최대 3시간 강우로 나눈 값"
   },
   "flooded_ha_per_mm_after": {
    "value": 1.366,
@@ -89,7 +89,7 @@
    "unit": "ha/mm",
    "n": 1,
    "measured": true,
-   "note": "같은 자(ha/mm)로 잰 정비 후"
+   "note": "정비 후 사건의 침수 ha를 최대 3시간 강우로 나눈 값"
   },
   "flooded_change_pct_rain_adjusted": {
    "value": 23.8,
@@ -108,13 +108,120 @@
    36.45
   ],
   "legend": {
-   "flood_before": "정비 전 호우 침수 추정(청) · 상시 수역(회) · VV<-16 dB & 기준선 대비 -3 dB",
-   "flood_after": "정비 후 호우 침수 추정(청) · 상시 수역(회) · VV<-16 dB & 기준선 대비 -3 dB",
-   "flood_change": "정비 전에만 침수(청) · 정비 후에만 침수(적) · 두 시기 모두(자) · 상시 수역(회)"
+   "flood_before": {
+    "label": "정비 전 침수",
+    "type": "classes",
+    "query": "flood_before",
+    "items": [
+     {
+      "c": "#1f5aa0",
+      "t": "침수 추정"
+     },
+     {
+      "c": "#787878",
+      "t": "상시 수역"
+     }
+    ],
+    "note": "정비 전 호우 사건의 합집합. VV -16 dB 미만이고 기준선보다 3 dB 이상 낮은 화소"
+   },
+   "flood_after": {
+    "label": "정비 후 침수",
+    "type": "classes",
+    "query": "flood_after",
+    "items": [
+     {
+      "c": "#1f5aa0",
+      "t": "침수 추정"
+     },
+     {
+      "c": "#787878",
+      "t": "상시 수역"
+     }
+    ],
+    "note": "정비 후 호우 사건의 합집합. VV -16 dB 미만이고 기준선보다 3 dB 이상 낮은 화소"
+   },
+   "flood_change": {
+    "label": "전후 비교",
+    "type": "classes",
+    "query": "flood_change",
+    "items": [
+     {
+      "c": "#1f5aa0",
+      "t": "정비 전에만 침수"
+     },
+     {
+      "c": "#a02c1e",
+      "t": "정비 후에만 침수"
+     },
+     {
+      "c": "#46286e",
+      "t": "두 시기 모두"
+     },
+     {
+      "c": "#787878",
+      "t": "상시 수역"
+     }
+    ],
+    "note": "같은 화소를 정비 전후로 비교"
+   },
+   "flood_evt_20230629": {
+    "label": "2023-06-29 호우",
+    "type": "classes",
+    "query": "flood_evt_20230629",
+    "items": [
+     {
+      "c": "#1f5aa0",
+      "t": "침수 추정"
+     },
+     {
+      "c": "#787878",
+      "t": "상시 수역"
+     }
+    ],
+    "event": true,
+    "note": "정비 전, 최대 3시간 강우 50 mm, 정점 4시간 뒤 관측, 침수 추정 43 ha"
+   },
+   "flood_evt_20230920": {
+    "label": "2023-09-20 호우",
+    "type": "classes",
+    "query": "flood_evt_20230920",
+    "items": [
+     {
+      "c": "#1f5aa0",
+      "t": "침수 추정"
+     },
+     {
+      "c": "#787878",
+      "t": "상시 수역"
+     }
+    ],
+    "event": true,
+    "note": "정비 전, 최대 3시간 강우 80 mm, 정점 24시간 뒤 관측, 침수 추정 107 ha"
+   },
+   "flood_evt_20250716": {
+    "label": "2025-07-16 호우",
+    "type": "classes",
+    "query": "flood_evt_20250716",
+    "items": [
+     {
+      "c": "#1f5aa0",
+      "t": "침수 추정"
+     },
+     {
+      "c": "#787878",
+      "t": "상시 수역"
+     }
+    ],
+    "event": true,
+    "note": "정비 후, 최대 3시간 강우 133 mm, 정점 56시간 뒤 관측, 침수 추정 182 ha"
+   }
   },
   "flood_before": "/api/projects/flood-buyeo-drainage/overlay/flood_before.png",
   "flood_after": "/api/projects/flood-buyeo-drainage/overlay/flood_after.png",
-  "flood_change": "/api/projects/flood-buyeo-drainage/overlay/flood_change.png"
+  "flood_change": "/api/projects/flood-buyeo-drainage/overlay/flood_change.png",
+  "flood_evt_20230629": "/api/projects/flood-buyeo-drainage/overlay/flood_evt_20230629.png",
+  "flood_evt_20230920": "/api/projects/flood-buyeo-drainage/overlay/flood_evt_20230920.png",
+  "flood_evt_20250716": "/api/projects/flood-buyeo-drainage/overlay/flood_evt_20250716.png"
  },
  "events": [
   {
@@ -369,12 +476,12 @@
  "failed": [],
  "verdict": {
   "code": "not_reduced",
-  "text": "침수 추정 범위 정비 전 149 ha → 후 182 ha (+22%) (최대 3시간 강우 전 80 mm · 후 133 mm). 강우 보정(ha/mm) 전 1.10 → 후 1.37 (+24%). — 감소를 확인하지 못함."
+  "text": "침수 추정 범위는 정비 전 149 ha, 정비 후 182 ha로 감소를 확인하지 못했다(+22%). 강우량당 침수 면적은 1.10에서 1.37 ha/mm로 바뀌었다(+24%). 최대 3시간 강우는 정비 전 80 mm, 정비 후 133 mm였다."
  },
  "limitations": [
-  "관측가능성은 통과 여부이며 실제 촬영·구름 무관(SAR) 조건만 반영한다.",
-  "침수 범위는 첫 통과 시점의 수면만 잡는다. 정점 후 2~3일이 지난 B등급 사건은 이미 물이 빠진 구역을 놓칠 수 있다.",
-  "VV 후방산란 임계는 잔잔한 수면 기준이며, 바람에 거친 수면·침수된 작물은 과소, 평탄한 포장면은 과대 추정될 수 있다.",
+  "관측가능성은 위성 통과 시각 기준이다.",
+  "침수 범위는 첫 통과 시점의 수면만 잡는다. 정점 후 2~3일이 지난 B등급 사건은 물이 빠진 구역을 놓칠 수 있다.",
+  "VV 임계는 잔잔한 수면 기준이다. 거친 수면과 침수 작물은 과소, 평탄한 포장면은 과대 추정될 수 있다.",
   "정비 전후 사건의 강우 강도가 다르므로 범위 변화는 사업 효과만의 값이 아니다."
  ]
 }

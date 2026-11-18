@@ -195,3 +195,42 @@ code{font-family:var(--font-marg);font-size:1em;background:var(--paper-2);paddin
 /* 재배분 시뮬레이션 표 */
 .sub-h{font-size:12.5px;margin:12px 0 4px;color:var(--ink)} .sub-h small{display:block;font-weight:400;font-size:11px;color:var(--ink-3);margin-top:2px}
 .tbl.realloc tr.treated td{color:var(--ink-3)} .tbl.realloc tr.candidate:nth-of-type(2) td,.tbl.realloc tr.candidate:nth-of-type(3) td{font-weight:600}
+
+/* 지면 보강(2026-11-18): 범례, 전후 비교, 로딩, 줌 컨트롤, 좌표 */
+.map-b{pointer-events:none;clip-path:inset(0 0 0 50%)}
+.cmp{position:absolute;inset:14px;pointer-events:none;z-index:6}
+.cmp-handle{position:absolute;top:0;bottom:0;left:50%;width:0;border-left:2px solid var(--ink);pointer-events:auto;cursor:ew-resize;transform:translateX(-1px)}
+.cmp-handle i{position:absolute;top:50%;left:50%;width:30px;height:30px;transform:translate(-50%,-50%);border:1.5px solid var(--ink);border-radius:50%;background:var(--paper)}
+.cmp-handle i::before,.cmp-handle i::after{content:"";position:absolute;top:50%;width:0;height:0;border:5px solid transparent;transform:translateY(-50%)}
+.cmp-handle i::before{left:3px;border-right-color:var(--ink)} .cmp-handle i::after{right:3px;border-left-color:var(--ink)}
+.cmp-tag{position:absolute;top:58px;font-family:var(--font-marg);font-size:11px;letter-spacing:.12em;text-transform:uppercase;background:var(--paper);border:1px solid var(--ink);padding:2px 8px;pointer-events:none}
+.cmp-a{left:10px} .cmp-b{right:10px}
+.legend{position:absolute;right:24px;bottom:52px;z-index:5;background:rgba(251,250,246,.94);border:1px solid var(--rule);padding:8px 10px;max-width:260px;font-size:12px;color:var(--ink)}
+.legend .lg-title{display:block;font-weight:700;margin-bottom:5px}
+.legend .lg-items{display:flex;flex-wrap:wrap;gap:4px 12px}
+.legend .lg-item{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.legend .sw{width:14px;height:10px;border:1px solid rgba(20,20,20,.35);flex:none}
+.legend .ramp{height:10px;border:1px solid rgba(20,20,20,.35);margin:2px 0 3px}
+.legend .ramp-ticks{display:flex;justify-content:space-between;font-family:var(--font-marg);font-size:11px;color:var(--ink-2)}
+.legend .lg-note{display:block;margin-top:5px;font-size:11px;color:var(--ink-3);line-height:1.35}
+.map-loading{position:absolute;inset:14px;z-index:7;display:flex;align-items:center;justify-content:center;background:rgba(251,250,246,.45);pointer-events:none}
+.map-loading span{font-family:var(--font-marg);font-size:12px;letter-spacing:.14em;text-transform:uppercase;background:var(--paper);border:1px solid var(--ink);padding:5px 12px}
+.map-loading span::after{content:"";display:inline-block;width:10px;text-align:left;animation:dots 1.2s steps(4) infinite}
+@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+.cursor-pos{margin-left:10px;color:var(--ink-3)}
+.maplibregl-ctrl-top-right{top:60px;right:24px}
+.maplibregl-ctrl-bottom-right{right:24px;bottom:24px}
+.maplibregl-ctrl-group{border-radius:0;box-shadow:none;border:1px solid var(--ink);background:var(--paper)}
+.maplibregl-ctrl-group button{width:28px;height:28px;border-radius:0} .maplibregl-ctrl-group button+button{border-top:1px solid var(--rule)}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon{filter:none}
+.seg-btn[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.passrail .tick{cursor:pointer} .passrail .tick.is-active{border-left-width:2px;color:var(--ink);font-weight:600}
+.passrail .tick:hover{color:var(--ink)}
+.plate.compare .legend{right:auto;left:24px;bottom:60px}
+.maplibregl-popup-content .q-val{font-family:var(--font-marg);font-size:18px;font-weight:600;display:block;margin:2px 0}
+.seg-select{appearance:none;-webkit-appearance:none;font:inherit;font-size:12px;color:var(--ink);background:var(--paper) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%23141414'/></svg>") no-repeat right 8px center;border:1px solid var(--ink);border-left:0;padding:0 24px 0 10px;height:100%;cursor:pointer}
+.seg-select:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+.tbl tr.is-link{cursor:pointer} .tbl tr.is-link:hover td{background:rgba(20,20,20,.04)}
+.rcpt .val{min-width:0;max-width:62%}
+.rcpt .val .obj{display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-size:12px;white-space:nowrap}
+.rcpt .val .obj em{font-style:normal;color:var(--ink-3);margin-right:6px;font-family:var(--font-ui);font-size:11px}

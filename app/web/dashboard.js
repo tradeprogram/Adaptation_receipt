@@ -2,23 +2,47 @@
 (() => {
   const $ = (s, el = document) => el.querySelector(s);
   const api = async (path, opt) => { const r = await fetch(path, opt); if (!r.ok) throw new Error(`${r.status} ${path}`); return r.json(); };
-  const TYPE_LABEL = { fire: "산불 피해지 복구·복원", heat: "옥상 차열·녹화(열 저감)", flood: "하천·배수 정비(침수 방재)" };
+  const TYPE_LABEL = { fire: "산불 피해지 복원", heat: "옥상 차열(열 저감)", flood: "배수 정비(침수 방재)" };
   const TYPE_CODE = { fire: "FIRE", heat: "HEAT", flood: "FLOOD" };
   const VERDICT = { detected: "효과 검출", recovered: "대조지 수준 회복", gap_remaining: "회복 격차 잔존", reduced: "침수 범위 감소", not_reduced: "침수 범위 미감소", undetected: "미검출", unmeasured: "측정 불가", ready: "2단계 실행 가능", waiting: "대기", waiting_input: "입력 대기", not_run: "미실행", failed: "실패", partial: "부분 완료", ok: "완료", done: "완료", queued: "대기", running: "진행" };
   const SRC = { OBSERVED: "실측", MODEL: "계산", RULE: "규칙", ASSUMPTION: "가정", FORECAST: "예보" };
   const OV_LABEL = { dnbr: "피해등급", pre: "산불 전", post: "진화 직후", lst_before: "시공 전 온도", lst_after: "시공 후 온도", lst_diff: "전후 차이", flood_before: "정비 전 침수", flood_after: "정비 후 침수", flood_change: "전후 비교", none: "없음" };
-  const ovKeys = (mod) => Object.keys(mod?.overlays || {}).filter((k) => !["bounds", "legend"].includes(k));
+  const PAIRS = [["pre", "post", "산불 전", "진화 직후"], ["lst_before", "lst_after", "시공 전", "시공 후"], ["flood_before", "flood_after", "정비 전", "정비 후"]];
   const SEV_COLORS = ["#e9cf9c", "#c48a3e", "#8a5a1e", "#4a2a12"];
-  const state = { projects: [], current: null, card: null, overlay: "dnbr", chart: null, poll: null };
+  // 지표 장부의 항목 이름. 키는 JSON(재현용)에 남고 화면에는 한글만 적는다
+  const KEY_LABEL = {
+    burned_forest_ha: "피해 산림 면적", control_ha: "대조지 면적", recovery_ratio_latest: "최근 회복률", did_effect_ndvi: "이중차분 효과(NDVI)", ci95_median_diff: "95% 신뢰구간", mde_ndvi: "검출가능최소효과(NDVI)", valid_pct_min: "유효 화소 비율(최소)",
+    did_effect_lst_c: "이중차분 효과(℃)", medians: "집단별 중앙값(℃)", ci95: "95% 신뢰구간", mde_c: "검출가능최소효과(℃)", scenes_used: "사용한 장면 수", treated_area_ha: "시공 면적", area_for_mde_1c_ha: "1℃ 검출에 필요한 면적", area_for_mde_05c_ha: "0.5℃ 검출에 필요한 면적", shelters_in_aoi: "범위 안 무더위쉼터", shelter_capacity_in_aoi: "쉼터 수용 인원",
+    events_total: "호우 사건 수", grade_counts: "관측 등급별 사건 수", stage2_ready: "침수 범위 비교 가능", flooded_ha_before: "정비 전 침수 면적", flooded_ha_after: "정비 후 침수 면적", flooded_change_ha: "침수 면적 변화", flooded_change_pct: "침수 면적 변화율", flooded_ha_per_mm_before: "정비 전 강우량당 침수", flooded_ha_per_mm_after: "정비 후 강우량당 침수", flooded_change_pct_rain_adjusted: "강우 보정 변화율",
+    old_building_share: "노후 건물 비율", median_building_age: "건물 연령 중앙값", households_total: "세대 수", jurisdiction_oldage_support: "관할 노년부양비", jurisdiction_aging_index: "관할 고령화지수",
+  };
+  const SUB_LABEL = { treat_pre: "시공 전", treat_post: "시공 후", ctrl_pre: "대조 전", ctrl_post: "대조 후", A: "A등급", B: "B등급", C: "C등급" };
+  const label = (k) => KEY_LABEL[k] || k;
+  const state = { projects: [], current: null, card: null, overlay: "dnbr", chart: null, poll: null, compare: false, loading: 0 };
+  const legendOf = (mod, key) => { const L = mod?.overlays?.legend?.[key]; return typeof L === "string" ? { label: OV_LABEL[key] || key, type: "text", text: L } : L; };
+  const ovLabel = (mod, key) => legendOf(mod, key)?.label || OV_LABEL[key] || key;
+  const ovKeys = (mod) => Object.keys(mod?.overlays || {}).filter((k) => !["bounds", "legend"].includes(k));
+  const mainKeys = (mod) => ovKeys(mod).filter((k) => !legendOf(mod, k)?.event);
+  const eventKeys = (mod) => ovKeys(mod).filter((k) => legendOf(mod, k)?.event);
 
   // ---------- 지면(지도) ----------
-  const map = new maplibregl.Map({ container: "map", style: "https://tiles.openfreemap.org/styles/liberty", center: [127.8, 36.4], zoom: 6.3, attributionControl: { compact: true } });
+  const STYLE = "https://tiles.openfreemap.org/styles/liberty";
+  const map = new maplibregl.Map({ container: "map", style: STYLE, center: [127.8, 36.4], zoom: 6.3, attributionControl: { compact: true }, preserveDrawingBuffer: true });
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), "top-right");
   const SAT = { type: "raster", tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, attribution: "Esri World Imagery" };
-  const firstSymbolLayer = () => (map.getStyle().layers.find((l) => l.type === "symbol") || {}).id;
+  const firstSymbolLayer = (m) => (m.getStyle().layers.find((l) => l.type === "symbol") || {}).id;
   const bboxPoly = (b) => ({ type: "Polygon", coordinates: [[[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]], [b[0], b[1]]]] });
+  // 지명을 한글 우선으로: OpenMapTiles의 name:ko가 있으면 쓰고 없으면 현지명
+  const koreanize = (m) => { for (const l of m.getStyle().layers) { if (l.type === "symbol" && l.layout && l.layout["text-field"]) { try { m.setLayoutProperty(l.id, "text-field", ["coalesce", ["get", "name:ko"], ["get", "name"]]); } catch (e) { /* 스타일 표현식이 다른 층은 건너뛴다 */ } } } };
+  const addOverlayTo = (m, id, url, b, opacity) => {
+    if (m.getLayer(id)) { m.removeLayer(id); m.removeSource(id); }
+    m.addSource(id, { type: "image", url, coordinates: [[b[0], b[3]], [b[2], b[3]], [b[2], b[1]], [b[0], b[1]]] });
+    m.addLayer({ id, type: "raster", source: id, paint: { "raster-opacity": opacity, "raster-fade-duration": 120, "raster-resampling": "nearest" } }, m.getLayer("aoi-fill") ? "aoi-fill" : firstSymbolLayer(m));
+  };
   map.on("load", () => {
+    koreanize(map);
     map.addSource("sat", SAT);
-    map.addLayer({ id: "sat", type: "raster", source: "sat", layout: { visibility: "none" } }, firstSymbolLayer());
+    map.addLayer({ id: "sat", type: "raster", source: "sat", layout: { visibility: "none" } }, firstSymbolLayer(map));
     map.addSource("aois", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
     map.addLayer({ id: "aoi-fill", type: "fill", source: "aois", paint: { "fill-color": "#141414", "fill-opacity": 0.04 } });
     map.addLayer({ id: "aoi-line", type: "line", source: "aois", paint: { "line-color": "#141414", "line-width": 1, "line-dasharray": [4, 3] } });
@@ -31,18 +55,27 @@
     map.addSource("pts", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
     map.addLayer({ id: "pts-halo", type: "circle", source: "pts", paint: { "circle-radius": ["match", ["get", "kind"], "station", 9, 7], "circle-color": "#fbfaf6", "circle-opacity": 0.9 } });
     map.addLayer({ id: "pts", type: "circle", source: "pts", paint: { "circle-radius": ["match", ["get", "kind"], "station", 5, 4.2], "circle-color": ["match", ["get", "kind"], "station", "#141414", "#1f5aa0"], "circle-stroke-color": "#fbfaf6", "circle-stroke-width": 1.2 } });
-    const popup = new maplibregl.Popup({ closeButton: true, maxWidth: "260px" });
-    map.on("click", "pts", (e) => { const f = e.features[0]; popup.setLngLat(f.geometry.coordinates).setHTML(f.properties.html).addTo(map); });
-    map.on("mouseenter", "pts", () => { map.getCanvas().style.cursor = "pointer"; }); map.on("mouseleave", "pts", () => { map.getCanvas().style.cursor = ""; });
-    map.on("click", "aoi-fill", (e) => { const id = e.features?.[0]?.properties?.id; if (id) selectProject(id); });
-    map.on("mouseenter", "aoi-fill", () => (map.getCanvas().style.cursor = "pointer"));
-    map.on("mouseleave", "aoi-fill", () => (map.getCanvas().style.cursor = ""));
+    map.on("click", (e) => {
+      const hit = map.queryRenderedFeatures(e.point, { layers: ["pts", "aoi-fill"] });
+      const pt = hit.find((f) => f.layer.id === "pts");
+      if (pt) { popup.setLngLat(pt.geometry.coordinates).setHTML(pt.properties.html).addTo(map); return; }
+      const aoi = hit.find((f) => f.layer.id === "aoi-fill");
+      if (aoi && aoi.properties.id !== state.current) { selectProject(aoi.properties.id); return; }
+      queryPixel(e.lngLat);
+    });
+    map.on("mousemove", (e) => {
+      const hit = map.queryRenderedFeatures(e.point, { layers: ["pts", "aoi-fill"] });
+      map.getCanvas().style.cursor = hit.some((f) => f.layer.id === "pts" || f.properties.id !== state.current) ? "pointer" : (state.overlay !== "none" && state.card ? "crosshair" : "");
+      $("#cursorPos").textContent = `${e.lngLat.lat.toFixed(4)}°N ${e.lngLat.lng.toFixed(4)}°E`;
+    });
+    map.on("mouseout", () => { $("#cursorPos").textContent = ""; });
     drawAois(); updateMarginalia();
   });
+  const popup = new maplibregl.Popup({ closeButton: true, maxWidth: "280px" });
   map.on("moveend", updateMarginalia); map.on("resize", updateMarginalia);
   // 지면 크기가 바뀌면(글꼴·채팅 로드로 격자 재배치) 현재 도엽 범위로 다시 맞춘다
   let fitTimer = null;
-  new ResizeObserver(() => { if (!state.focusBbox) return; clearTimeout(fitTimer); fitTimer = setTimeout(() => { map.resize(); const b = state.focusBbox; map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, duration: 300 }); }, 120); }).observe(document.querySelector(".plate"));
+  new ResizeObserver(() => { if (!state.focusBbox) return; clearTimeout(fitTimer); fitTimer = setTimeout(() => { map.resize(); if (mapB) mapB.resize(); const b = state.focusBbox; map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, duration: 300 }); }, 120); }).observe(document.querySelector(".plate"));
   function drawAois() {
     const src = map.getSource("aois"); if (!src) return;
     src.setData({ type: "FeatureCollection", features: state.projects.map((p) => ({ type: "Feature", properties: { id: p.id, name: p.name }, geometry: bboxPoly(p.bbox) })) });
@@ -68,41 +101,122 @@
     (g.control || []).forEach((f) => feats.push({ type: "Feature", properties: { role: "control" }, geometry: f.geometry || f }));
     map.getSource("tc").setData({ type: "FeatureCollection", features: feats });
     const mod = card?.modules?.[0] || {}; const pts = [];
-    (mod.shelters || []).forEach((s) => pts.push({ type: "Feature", properties: { kind: "shelter", html: `<b>${s.name}</b><span class="sub">${s.addr || ""}</span>무더위쉼터 · 이용가능 ${s.capacity ?? "—"}명${s.year ? " · " + s.year : ""}` }, geometry: { type: "Point", coordinates: [s.lon, s.lat] } }));
+    (mod.shelters || []).forEach((s) => pts.push({ type: "Feature", properties: { kind: "shelter", html: `<b>${s.name}</b><span class="sub">${s.addr || ""}</span>무더위쉼터, 이용 가능 ${s.capacity ?? "—"}명` }, geometry: { type: "Point", coordinates: [s.lon, s.lat] } }));
     const st = card?.project?.kma_station; if (st && st.lon) {
-      const evs = (mod.events || []).filter((e) => e.rain).map((e) => `${(e.rain.peak_kst || e.event_peak).slice(0, 10)} 1h ${e.rain.peak_rn} mm · 3h ${e.rain.max_3h} mm`).join("<br>");
-      pts.push({ type: "Feature", properties: { kind: "station", html: `<b>기상청 ${st.name} (${st.stn})</b><span class="sub">지상관측 시간강우 · 호우 사건 추출 지점</span>${evs}` }, geometry: { type: "Point", coordinates: [st.lon, st.lat] } });
+      const evs = (mod.events || []).filter((e) => e.rain).map((e) => `${(e.rain.peak_kst || e.event_peak).slice(0, 10)}: 1시간 ${e.rain.peak_rn} mm, 3시간 ${e.rain.max_3h} mm`).join("<br>");
+      pts.push({ type: "Feature", properties: { kind: "station", html: `<b>기상청 ${st.name} 관측소 (${st.stn})</b><span class="sub">호우 사건을 뽑은 시간강우 지점</span>${evs}` }, geometry: { type: "Point", coordinates: [st.lon, st.lat] } });
     }
     map.getSource("pts").setData({ type: "FeatureCollection", features: pts });
   }
+
+  // ---------- 오버레이·범례 ----------
   function setOverlay(name) {
     state.overlay = name;
     if (!map.getLayer("aoi-fill")) { map.once("load", () => setOverlay(name)); return; }
     if (map.getLayer("overlay")) { map.removeLayer("overlay"); map.removeSource("overlay"); }
     const mod = state.card?.modules?.find((m) => m.overlays);
-    if (!mod || name === "none") return;
-    if (!mod.overlays[name]) return;
-    const b = mod.overlays.bounds; const url = mod.overlays[name] + "?t=" + Date.now();
-    map.addSource("overlay", { type: "image", url, coordinates: [[b[0], b[3]], [b[2], b[3]], [b[2], b[1]], [b[0], b[1]]] });
-    map.addLayer({ id: "overlay", type: "raster", source: "overlay", paint: { "raster-opacity": +$("#opacity").value / 100, "raster-fade-duration": 120, "raster-resampling": "nearest" } }, "aoi-fill");
+    renderLegend(mod, name);
+    document.querySelectorAll("#overlaySeg [data-ov]").forEach((x) => x.classList.toggle("is-active", x.dataset.ov === name));
+    if (state.compare) { disableCompare(false); }
+    if (!mod || name === "none" || !mod.overlays[name]) return;
+    addOverlayTo(map, "overlay", mod.overlays[name] + "?t=" + Date.now(), mod.overlays.bounds, +$("#opacity").value / 100);
+  }
+  function renderLegend(mod, key) {
+    const box = $("#legend"); const L = legendOf(mod, key);
+    if (!L || key === "none") { box.hidden = true; return; }
+    let body = "";
+    if (L.type === "classes") body = `<div class="lg-items">${L.items.map((i) => `<span class="lg-item"><i class="sw" style="background:${i.c}"></i>${i.t}</span>`).join("")}</div>`;
+    else if (L.type === "ramp") body = `<div class="ramp" style="background:linear-gradient(90deg,${L.stops.join(",")})"></div><div class="ramp-ticks"><span>${L.min}${L.unit || ""}</span><span>${((L.min + L.max) / 2).toFixed(L.unit === "℃" ? 0 : 1)}${L.unit || ""}</span><span>${L.max}${L.unit || ""}</span></div>`;
+    else body = L.text ? `<span class="lg-note" style="margin-top:0">${L.text}</span>` : "";
+    box.innerHTML = `<span class="lg-title">${L.label || OV_LABEL[key] || key}</span>${body}${L.note ? `<span class="lg-note">${L.note}</span>` : ""}`;
+    box.hidden = false;
   }
   function syncOverlayUI(mod) {
-    const keys = ovKeys(mod); const seg = $("#overlaySeg"); const has = keys.length > 0;
-    seg.hidden = !has; $("#opacityWrap").hidden = !has; $("#ovLegend").hidden = !has;
-    if (!has) { if (map.getLayer("overlay")) { map.removeLayer("overlay"); map.removeSource("overlay"); } return; }
-    if (!keys.includes(state.overlay) && state.overlay !== "none") state.overlay = keys[0];
-    seg.innerHTML = [...keys, "none"].map((k) => `<button class="seg-btn${k === state.overlay ? " is-active" : ""}" data-ov="${k}">${OV_LABEL[k] || k}</button>`).join("");
-    const lg = mod.overlays.legend?.[state.overlay]; $("#ovLegend").textContent = lg || ""; $("#ovLegend").hidden = !lg;
+    const keys = mainKeys(mod), evs = eventKeys(mod); const seg = $("#overlaySeg"); const has = keys.length > 0;
+    seg.hidden = !has; $("#opacityWrap").hidden = !has; $("#mapActions").hidden = !has;
+    if (!has) { if (map.getLayer("overlay")) { map.removeLayer("overlay"); map.removeSource("overlay"); } $("#legend").hidden = true; return; }
+    if (!ovKeys(mod).includes(state.overlay) && state.overlay !== "none") state.overlay = keys[0];
+    seg.innerHTML = [...keys, "none"].map((k) => `<button class="seg-btn${k === state.overlay ? " is-active" : ""}" data-ov="${k}">${ovLabel(mod, k)}</button>`).join("")
+      + (evs.length ? `<select class="seg-select" id="evtSelect" aria-label="사건별 침수"><option value="">사건별 보기</option>${evs.map((k) => `<option value="${k}"${k === state.overlay ? " selected" : ""}>${ovLabel(mod, k)}</option>`).join("")}</select>` : "");
+    $("#btnCompare").hidden = !PAIRS.some((pr) => mod.overlays[pr[0]] && mod.overlays[pr[1]]);
+    const sel = $("#evtSelect"); if (sel) sel.addEventListener("change", () => { if (sel.value) setOverlay(sel.value); });
   }
-  $("#overlaySeg").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-ov]"); if (!b) return;
-    document.querySelectorAll("#overlaySeg [data-ov]").forEach((x) => x.classList.toggle("is-active", x === b)); setOverlay(b.dataset.ov);
-    const mod = state.card?.modules?.find((m) => m.overlays); const lg = mod?.overlays?.legend?.[b.dataset.ov]; $("#ovLegend").textContent = lg || ""; $("#ovLegend").hidden = !lg;
-  });
+  $("#overlaySeg").addEventListener("click", (e) => { const b = e.target.closest("[data-ov]"); if (!b) return; const sel = $("#evtSelect"); if (sel) sel.value = ""; setOverlay(b.dataset.ov); });
   document.querySelectorAll("[data-base]").forEach((b) => b.addEventListener("click", () => {
-    document.querySelectorAll("[data-base]").forEach((x) => x.classList.toggle("is-active", x === b)); map.setLayoutProperty("sat", "visibility", b.dataset.base === "sat" ? "visible" : "none");
+    document.querySelectorAll("[data-base]").forEach((x) => x.classList.toggle("is-active", x === b));
+    map.setLayoutProperty("sat", "visibility", b.dataset.base === "sat" ? "visible" : "none");
+    if (mapB && mapB.getLayer("sat")) mapB.setLayoutProperty("sat", "visibility", b.dataset.base === "sat" ? "visible" : "none");
   }));
-  $("#opacity").addEventListener("input", (e) => { if (map.getLayer("overlay")) map.setPaintProperty("overlay", "raster-opacity", +e.target.value / 100); });
+  $("#opacity").addEventListener("input", (e) => { const o = +e.target.value / 100; if (map.getLayer("overlay")) map.setPaintProperty("overlay", "raster-opacity", o); if (mapB && mapB.getLayer("overlayB")) mapB.setPaintProperty("overlayB", "raster-opacity", o); });
+
+  // 클릭 지점의 값: 서버의 격자(layers.npz)에서 읽는다
+  async function queryPixel(lngLat) {
+    const mod = state.card?.modules?.find((m) => m.overlays); const key = state.overlay;
+    if (!mod || key === "none" || !mod.overlays[key]) return;
+    const L = legendOf(mod, key); const q = L?.query; if (!q) return;
+    let r; try { r = (await api(`/api/projects/${state.current}/query?layer=${q}&lon=${lngLat.lng.toFixed(6)}&lat=${lngLat.lat.toFixed(6)}`)).data; } catch (e) { return; }
+    if (!r.available || r.inside === false) return;
+    let val;
+    if (r.value == null) val = `<span class="q-val none">측정 불가</span><span class="sub">구름 마스킹 또는 범위 밖</span>`;
+    else if (r.kind === "class") { const it = L.items?.[r.value - 1]; val = r.value === 0 || !it ? `<span class="q-val">해당 없음</span>` : `<span class="q-val"><i class="sw" style="display:inline-block;width:12px;height:12px;background:${it.c};border:1px solid rgba(20,20,20,.35);vertical-align:-1px;margin-right:6px"></i>${it.t}</span>`; }
+    else val = `<span class="q-val">${r.value > 0 && L.min < 0 ? "+" : ""}${r.value}${L.unit || ""}</span>`;
+    popup.setLngLat(lngLat).setHTML(`<b>${L.label || OV_LABEL[key]}</b>${val}<span class="sub">${lngLat.lat.toFixed(4)}°N ${lngLat.lng.toFixed(4)}°E</span>`).addTo(map);
+  }
+
+  // ---------- 전후 비교(좌우 가름) ----------
+  let mapB = null, cmpPct = 50;
+  const setCmp = (pct) => { cmpPct = Math.max(2, Math.min(98, pct)); $("#mapB").style.clipPath = `inset(0 0 0 ${cmpPct}%)`; $("#cmpHandle").style.left = `${cmpPct}%`; $("#cmpHandle").setAttribute("aria-valuenow", Math.round(cmpPct)); };
+  function enableCompare() {
+    const mod = state.card?.modules?.find((m) => m.overlays); const pr = PAIRS.find((x) => mod?.overlays[x[0]] && mod.overlays[x[1]]); if (!pr) return;
+    state.compare = true; document.querySelector(".plate").classList.add("compare");
+    $("#btnCompare").setAttribute("aria-pressed", "true"); $("#mapB").hidden = false; $("#cmp").hidden = false; $("#cmpA").textContent = pr[2]; $("#cmpB").textContent = pr[3];
+    const o = +$("#opacity").value / 100; const b = mod.overlays.bounds;
+    const place = () => { addOverlayTo(mapB, "overlayB", mod.overlays[pr[1]] + "?t=" + Date.now(), b, o); mapB.resize(); };
+    if (!mapB) {
+      mapB = new maplibregl.Map({ container: "mapB", style: STYLE, center: map.getCenter(), zoom: map.getZoom(), interactive: false, attributionControl: false, preserveDrawingBuffer: true });
+      mapB.on("load", () => { koreanize(mapB); mapB.addSource("sat", SAT); mapB.addLayer({ id: "sat", type: "raster", source: "sat", layout: { visibility: map.getLayoutProperty("sat", "visibility") || "none" } }, firstSymbolLayer(mapB)); place(); });
+      map.on("move", () => { if (mapB) mapB.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() }); });
+    } else { mapB.jumpTo({ center: map.getCenter(), zoom: map.getZoom() }); if (mapB.isStyleLoaded()) place(); else mapB.once("load", place); }
+    if (map.getLayer("overlay")) { map.removeLayer("overlay"); map.removeSource("overlay"); }
+    addOverlayTo(map, "overlay", mod.overlays[pr[0]] + "?t=" + Date.now(), b, o);
+    state.overlay = pr[0]; document.querySelectorAll("#overlaySeg [data-ov]").forEach((x) => x.classList.toggle("is-active", x.dataset.ov === pr[0]));
+    renderLegend(mod, pr[1].startsWith("lst") || pr[1].startsWith("flood") ? pr[1] : pr[0]);
+    setCmp(50);
+  }
+  function disableCompare(restore = true) {
+    state.compare = false; document.querySelector(".plate").classList.remove("compare");
+    $("#btnCompare").setAttribute("aria-pressed", "false"); $("#mapB").hidden = true; $("#cmp").hidden = true;
+    if (mapB && mapB.getLayer("overlayB")) { mapB.removeLayer("overlayB"); mapB.removeSource("overlayB"); }
+    if (restore) setOverlay(state.overlay);
+  }
+  $("#btnCompare").addEventListener("click", () => (state.compare ? disableCompare() : enableCompare()));
+  (() => {
+    const h = $("#cmpHandle"); const plate = document.querySelector(".plate"); let drag = false;
+    const pctOf = (x) => { const r = $("#map").getBoundingClientRect(); return (x - r.left) / r.width * 100; };
+    h.addEventListener("pointerdown", (e) => { drag = true; h.setPointerCapture(e.pointerId); });
+    h.addEventListener("pointermove", (e) => { if (drag) setCmp(pctOf(e.clientX)); });
+    h.addEventListener("pointerup", () => { drag = false; }); h.addEventListener("pointercancel", () => { drag = false; });
+    h.addEventListener("keydown", (e) => { if (e.key === "ArrowLeft") setCmp(cmpPct - 2); if (e.key === "ArrowRight") setCmp(cmpPct + 2); });
+    plate.addEventListener("dblclick", () => { if (state.compare) setCmp(50); });
+  })();
+
+  // ---------- 지도 저장(PNG): 지도 + 범례 + 축척 + 제목 ----------
+  $("#btnExport").addEventListener("click", () => {
+    const src = map.getCanvas(); const W = src.width, H = src.height; const dpr = W / src.clientWidth;
+    const c = document.createElement("canvas"); c.width = W; c.height = H + Math.round(120 * dpr); const g = c.getContext("2d");
+    g.fillStyle = "#fbfaf6"; g.fillRect(0, 0, c.width, c.height);
+    g.drawImage(src, 0, 0);
+    if (state.compare && mapB) { const sb = mapB.getCanvas(); const x = Math.round(W * cmpPct / 100); g.drawImage(sb, x, 0, W - x, H, x, 0, W - x, H); g.fillStyle = "#141414"; g.fillRect(x - dpr, 0, 2 * dpr, H); }
+    const mod = state.card?.modules?.find((m) => m.overlays); const L = legendOf(mod, state.overlay); const p = state.card?.project;
+    const f = (px) => `${Math.round(px * dpr)}px Pretendard, "Malgun Gothic", sans-serif`;
+    let y = H + 28 * dpr; g.fillStyle = "#141414"; g.font = `700 ${f(15)}`; g.fillText(`${p?.name || ""}`, 16 * dpr, y);
+    g.font = f(12); g.fillStyle = "#3a3a3a"; g.fillText(`${L?.label || ""}  ${state.compare ? "전후 비교" : ""}  ${$("#scalebarText").textContent} 축척 막대 기준  ${new Date().toISOString().slice(0, 10)}`, 16 * dpr, y + 22 * dpr);
+    y += 48 * dpr; let x = 16 * dpr;
+    if (L?.type === "classes") { for (const it of L.items) { g.fillStyle = it.c; g.fillRect(x, y - 10 * dpr, 16 * dpr, 11 * dpr); g.strokeStyle = "rgba(20,20,20,.4)"; g.strokeRect(x, y - 10 * dpr, 16 * dpr, 11 * dpr); g.fillStyle = "#141414"; g.font = f(12); g.fillText(it.t, x + 22 * dpr, y); x += (28 + g.measureText(it.t).width / dpr + 14) * dpr; } }
+    else if (L?.type === "ramp") { const gr = g.createLinearGradient(x, 0, x + 220 * dpr, 0); L.stops.forEach((s, i) => gr.addColorStop(i / (L.stops.length - 1), s)); g.fillStyle = gr; g.fillRect(x, y - 10 * dpr, 220 * dpr, 11 * dpr); g.strokeStyle = "rgba(20,20,20,.4)"; g.strokeRect(x, y - 10 * dpr, 220 * dpr, 11 * dpr); g.fillStyle = "#141414"; g.font = f(12); g.fillText(`${L.min}${L.unit || ""}`, x, y + 16 * dpr); g.fillText(`${L.max}${L.unit || ""}`, x + 200 * dpr, y + 16 * dpr); }
+    g.fillStyle = "#6e6a62"; g.font = f(10); g.fillText("적응 영수증 · OpenFreeMap © OpenMapTiles, OpenStreetMap · Copernicus Sentinel · USGS Landsat", 16 * dpr, c.height - 10 * dpr);
+    const a = document.createElement("a"); a.download = `adaptation-receipt_${state.current}_${state.overlay}.png`; a.href = c.toDataURL("image/png"); a.click();
+  });
 
   // ---------- 도엽 색인 ----------
   async function loadProjects() {
@@ -118,18 +232,25 @@
   }
 
   // ---------- 난외주기(카드) ----------
+  const setLoading = (on) => { state.loading += on ? 1 : -1; $("#mapLoading").hidden = state.loading <= 0; };
   async function selectProject(id) {
     state.current = id;
     document.querySelectorAll(".index-tile").forEach((b) => b.classList.toggle("is-active", b.dataset.id === id));
     const p = state.projects.find((x) => x.id === id);
     const focus = () => { map.resize(); map.setFilter("aoi-active", ["==", ["get", "id"], id]); map.fitBounds([[p.bbox[0], p.bbox[1]], [p.bbox[2], p.bbox[3]]], { padding: 40, duration: 600 }); };
     if (p) { state.focusBbox = p.bbox; if (map.getLayer("aoi-active")) focus(); else map.once("load", focus); }
-    const r = await api(`/api/projects/${id}/card`); state.card = r.data; renderCard(); setOverlay(state.overlay); drawExtras(p, state.card);
+    if (state.compare) disableCompare(false);
+    setLoading(true); $("#cardEmpty").hidden = false; $("#cardEmpty p").textContent = "성과 카드를 불러오는 중"; $("#card").hidden = true;
+    try {
+      const r = await api(`/api/projects/${id}/card`); if (state.current !== id) return;
+      state.card = r.data; renderCard(); setOverlay(state.overlay); drawExtras(p, state.card);
+    } catch (e) { toast(`카드를 불러오지 못했습니다 (${e.message})`); $("#cardEmpty p").textContent = "카드를 불러오지 못했습니다."; }
+    finally { setLoading(false); }
     if (state.poll) { clearInterval(state.poll); state.poll = null; }
     const jobs = (await api(`/api/jobs?project_id=${id}`)).data.filter((j) => ["queued", "running"].includes(j.status));
     if (jobs.length) watchJob(jobs[0].id);
   }
-  const fmt = (v, unit) => v == null ? `<span class="none">측정 불가</span>` : Array.isArray(v) ? `${v[0].toFixed(3)} ~ ${v[1].toFixed(3)}${unit ? " " + unit : ""}` : typeof v === "object" ? Object.entries(v).map(([k, x]) => `${k} ${typeof x === "number" ? (Number.isInteger(x) ? x : x.toFixed(2)) : x}`).join(" · ") : typeof v === "boolean" ? (v ? "예" : "아니오") : typeof v === "number" ? (Number.isInteger(v) ? v.toLocaleString("ko-KR") : (Math.abs(v) < 10 ? v.toFixed(3) : v.toFixed(1))) + (unit ? ` ${unit}` : "") : String(v);
+  const fmt = (v, unit) => v == null ? `<span class="none">측정 불가</span>` : Array.isArray(v) ? `${v[0].toFixed(3)} ~ ${v[1].toFixed(3)}${unit ? " " + unit : ""}` : typeof v === "object" ? `<span class="obj">${Object.entries(v).map(([k, x]) => `<span><em>${SUB_LABEL[k] || k}</em>${typeof x === "number" ? (Number.isInteger(x) ? x : x.toFixed(2)) : x}${unit && typeof x === "number" && !Number.isInteger(x) ? unit : ""}</span>`).join("")}</span>` : typeof v === "boolean" ? (v ? "예" : "아니오") : typeof v === "number" ? (Number.isInteger(v) ? v.toLocaleString("ko-KR") : (Math.abs(v) < 10 ? v.toFixed(3) : v.toFixed(1))) + (unit ? ` ${unit}` : "") : String(v);
   function renderCard() {
     const c = state.card; const p = c.project; const mod = c.modules[0];
     $("#cardEmpty").hidden = true; $("#card").hidden = false;
@@ -145,32 +266,35 @@
     $("#needs").hidden = !mod.needs; if (mod.needs) $("#needs").textContent = "필요한 입력: " + mod.needs.join(", ");
     $("#metricsBlock").hidden = !mod.metrics.length;
     // 영수증 행: 항목 ······ 값 / n / 출처
-    $("#metricsTable").outerHTML = `<div class="rcpt" id="metricsTable">` + mod.metrics.map((r) => `<div class="row"><span class="lbl">${r.key}${r.note ? `<span class="sub">${r.note}</span>` : ""}</span><span class="lead"></span><span class="val">${fmt(r.value, r.unit)}${r.n != null ? `<span class="n">n ${r.n.toLocaleString("ko-KR")}</span>` : ""}<span class="src ${r.badge}">${SRC[r.badge]}</span></span></div>`).join("") + `</div>`;
+    $("#metricsTable").outerHTML = `<div class="rcpt" id="metricsTable">` + mod.metrics.map((r) => `<div class="row"><span class="lbl">${label(r.key)}${r.note ? `<span class="sub">${r.note}</span>` : ""}</span><span class="lead"></span><span class="val">${fmt(r.value, r.unit)}${r.n != null ? `<span class="n">n ${r.n.toLocaleString("ko-KR")}</span>` : ""}<span class="src ${r.badge}">${SRC[r.badge]}</span></span></div>`).join("") + `</div>`;
     $("#chartBlock").hidden = !mod.series; if (mod.series) renderChart(mod.series);
     $("#severityBlock").hidden = !mod.severity; if (mod.severity) renderSeverity(mod.severity);
     $("#eventsBlock").hidden = !mod.events;
-    if (mod.events) $("#eventsTable").innerHTML = `<tr><th>사건</th><th>단계</th><th>등급</th><th class="num">첫 관측(h)</th><th class="num">침수 ha</th></tr>` + mod.events.map((e) => `<tr><td>${e.name}<span class="sub">${e.event_peak} UTC${e.passes?.[0] ? " · 궤도 " + e.passes[0].relative_orbit : ""}</span></td><td>${e.phase === "before" ? "정비 전" : "정비 후"}</td><td><span class="mark ${e.grade === "C" ? "undetected" : "detected"}">${e.grade}</span></td><td class="num">${e.first_pass_hours ?? "미관측"}</td><td class="num">${e.stage2?.flooded_ha != null ? e.stage2.flooded_ha.toLocaleString("ko-KR") : (e.stage2?.error ? `<span class="sub">${e.stage2.error}</span>` : "—")}</td></tr>`).join("");
+    if (mod.events) {
+      $("#eventsTable").innerHTML = `<tr><th>사건</th><th>단계</th><th>등급</th><th class="num">첫 관측(시간)</th><th class="num">침수 ha</th></tr>` + mod.events.map((e) => { const key = "flood_evt_" + e.event_peak.slice(0, 10).replaceAll("-", ""); const link = mod.overlays?.[key]; return `<tr${link ? ` class="is-link" data-ov="${key}" title="지도에서 보기"` : ""}><td>${e.name}<span class="sub">${e.event_peak} UTC${e.passes?.[0] ? ", 궤도 " + e.passes[0].relative_orbit : ""}</span></td><td>${e.phase === "before" ? "정비 전" : "정비 후"}</td><td><span class="mark ${e.grade === "C" ? "undetected" : "detected"}">${e.grade}</span></td><td class="num">${e.first_pass_hours ?? "미관측"}</td><td class="num">${e.stage2?.flooded_ha != null ? e.stage2.flooded_ha.toLocaleString("ko-KR") : (e.stage2?.error ? `<span class="sub">${e.stage2.error}</span>` : "—")}</td></tr>`; }).join("");
+      $("#eventsTable").querySelectorAll("tr.is-link").forEach((tr) => tr.addEventListener("click", () => { const sel = $("#evtSelect"); if (sel) sel.value = tr.dataset.ov; setOverlay(tr.dataset.ov); }));
+    }
     const eq = c.equity; const eb = $("#equityBody");
     if (!eq) eb.innerHTML = `<div class="errata">형평성 감사 미실행</div>`;
-    else if (eq.status !== "ok") eb.innerHTML = `<div class="errata">${eq.warnings.join("<br>")}</div><p class="meta">지표 설계: ${eq.data.design.indicators.join(" · ")}</p>`;
+    else if (eq.status !== "ok") eb.innerHTML = `<div class="errata">${eq.warnings.join("<br>")}</div><p class="meta">지표: ${eq.data.design.indicators.join(", ")}</p>`;
     else {
-      eb.innerHTML = `<table class="tbl">${Object.entries(eq.data.metrics).map(([k, m]) => `<tr><td>${k}</td><td class="num">${fmt(m.value, m.unit)}</td><td><span class="src ${m.badge}">${SRC[m.badge]}</span></td></tr>`).join("")}</table>`;
+      eb.innerHTML = `<table class="tbl">${Object.entries(eq.data.metrics).map(([k, m]) => `<tr><td>${label(k)}</td><td class="num">${fmt(m.value, m.unit)}</td><td><span class="src ${m.badge}">${SRC[m.badge]}</span></td></tr>`).join("")}</table>`;
       const ra = eq.data.reallocation;
       if (ra && ra.rows?.length) {
         const ST = { treated: "시공", control: "대조", candidate: "후보" };
-        eb.insertAdjacentHTML("beforeend", `<h3 class="sub-h">다음 집행 순위 시뮬레이션 <small>${ra.rule}</small></h3>
+        eb.insertAdjacentHTML("beforeend", `<h3 class="sub-h">다음 집행 순위 <small>${ra.rule}</small></h3>
           <table class="tbl realloc"><tr><th>순위</th><th>동</th><th class="num">세대</th><th class="num">지붕 m²</th><th class="num">세대/100m²</th><th class="num">누적 세대</th><th class="num">${ra.unit_cost_krw_m2 ? "누적 비용" : "누적 지붕 m²"}</th><th>상태</th></tr>` +
           ra.rows.map((r) => `<tr class="${r.status}"><td class="num">${r.rank}</td><td>${r.dong}</td><td class="num">${r.households}</td><td class="num">${r.roof_area_m2.toLocaleString("ko-KR")}</td><td class="num">${r.households_per_100m2}</td><td class="num">${r.cum_households ?? "—"}</td><td class="num">${ra.unit_cost_krw_m2 ? (r.cum_cost_krw != null ? r.cum_cost_krw.toLocaleString("ko-KR") + "원" : "—") : (r.cum_roof_area_m2 != null ? r.cum_roof_area_m2.toLocaleString("ko-KR") : "—")}</td><td><span class="mark ${r.status === "treated" ? "detected" : (r.status === "control" ? "undetected" : "")}">${ST[r.status]}</span></td></tr>`).join("") +
           `</table><p class="meta">${ra.note}${ra.within_budget?.length ? ` 예산 ${ra.budget_krw.toLocaleString("ko-KR")}원 안: ${ra.within_budget.join(", ")}` : ""}</p>`);
       }
     }
     $("#limitsBlock").hidden = !(mod.limitations || []).length; $("#limitsList").innerHTML = (mod.limitations || []).map((l) => `<li>${l}</li>`).join("");
-    const sc = mod.scenes || []; $("#scenesBlock").hidden = !sc.length; $("#scenesCount").textContent = sc.length ? `장면 ${sc.length}${mod.failed?.length ? ` · 실패 ${mod.failed.length}` : ""}` : "";
-    $("#scenesTable").innerHTML = `<tr><th>시점</th><th>관측일</th><th>장면</th><th>기준선</th><th class="num">구름%</th><th class="num">유효%</th></tr>` + sc.map((s) => `<tr><td>${s.label ?? s.year ?? ""}</td><td class="num">${s.date ?? "없음"}</td><td>${(s.ids || [s.id]).join("<br>")}</td><td class="num">${s.processing_baseline ?? ""}</td><td class="num">${s.cloud_cover != null ? s.cloud_cover.toFixed(1) : ""}</td><td class="num">${s.valid_pct ?? ""}</td></tr>`).join("") + (mod.failed || []).map((f) => `<tr><td colspan="6" class="none">실패: ${f.label || f.year || f.event?.name || ""} — ${f.error}</td></tr>`).join("");
-    renderPassRail(sc);
+    const sc = mod.scenes || []; $("#scenesBlock").hidden = !sc.length; $("#scenesCount").textContent = sc.length ? `장면 ${sc.length}${mod.failed?.length ? `, 실패 ${mod.failed.length}` : ""}` : "";
+    $("#scenesTable").innerHTML = `<tr><th>시점</th><th>관측일</th><th>장면</th><th>기준선</th><th class="num">구름%</th><th class="num">유효%</th></tr>` + sc.map((s) => `<tr><td>${s.label ?? s.year ?? ""}</td><td class="num">${s.date ?? "없음"}</td><td>${(s.ids || [s.id]).join("<br>")}</td><td class="num">${s.processing_baseline ?? ""}</td><td class="num">${s.cloud_cover != null ? s.cloud_cover.toFixed(1) : ""}</td><td class="num">${s.valid_pct ?? ""}</td></tr>`).join("") + (mod.failed || []).map((f) => `<tr><td colspan="6" class="none">실패: ${f.label || f.year || f.event?.name || ""}, ${f.error}</td></tr>`).join("");
+    renderPassRail(sc, mod);
     syncOverlayUI(mod);
-    $("#btnVerify").disabled = false; $("#btnVerify").querySelector("span").textContent = mod.status === "not_run" ? "검증 실행" : "다시 검정";
-    $("#colophonRight").textContent = `조제 ${(mod.computed_at || c.generated_at).slice(0, 10)}${mod.design?.orbit ? " · 궤도 " + mod.design.orbit : ""}${mod.design?.resolution_m ? " · " + mod.design.resolution_m + " m" : ""}`;
+    $("#btnVerify").disabled = false; $("#btnVerify").querySelector("span").textContent = mod.status === "not_run" ? "검정 실행" : "다시 검정";
+    $("#colophonRight").textContent = `조제 ${(mod.computed_at || c.generated_at).slice(0, 10)}${mod.design?.orbit ? ", 궤도 " + mod.design.orbit : ""}${mod.design?.resolution_m ? ", " + mod.design.resolution_m + " m" : ""}`;
     window.dispatchEvent(new CustomEvent("ar:project-selected", { detail: { id: p.id } }));
   }
   // 3D 출력: 프린터 헤드에서 카드가 뽑혀 나온다. 같은 도엽을 다시 그릴 때마다 새로 출력한다.
@@ -180,13 +304,12 @@
     $("#printerCounter").textContent = `NO. ${String(printSeq + 1).padStart(4, "0")} · ${p.id.toUpperCase()}`;
     $("#printerState").textContent = "PRINTING"; printer.classList.add("busy");
     $(".margin-right").scrollTo({ top: 0 });
-    // 단계는 타이머로 진행한다(CSS 지속시간과 동일). animationend는 탭이 숨겨지면 오지 않는다.
     const STAGES = [["feeding", 1600, "PRINTING"], ["cutting", 240, "CUT"], ["settling", 1100, "DONE"]];
     const clear = () => note.classList.remove("printed", "feeding", "cutting", "settling");
     const finish = () => { clear(); note.classList.add("printed"); printer.classList.remove("busy"); $("#printerState").textContent = "READY"; clearTimeout(printGuard); };
     const seq = ++printSeq;
     const run = (i) => {
-      if (seq !== printSeq) return;                         // 새 출력이 시작되면 이전 시퀀스는 중단
+      if (seq !== printSeq) return;
       if (i >= STAGES.length) { finish(); return; }
       const [cls, ms, label] = STAGES[i];
       clear(); void note.offsetWidth; note.classList.add(cls); $("#printerState").textContent = label;
@@ -196,13 +319,22 @@
     clearTimeout(printGuard);
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) finish(); else run(0);
   }
-  function renderPassRail(scenes) {
+  // 관측 눈금: 누르면 그 장면의 오버레이(있으면)로 바꾸고 회복률을 표시한다
+  function renderPassRail(scenes, mod) {
     const rail = $("#passrail"); rail.innerHTML = "";
     const dated = scenes.filter((s) => s.date || (s.window && s.window[0])); if (!dated.length) return;
     const t = (s) => new Date(s.date || s.window[0]).getTime(); const t0 = Math.min(...dated.map(t)), t1 = Math.max(...dated.map(t)); const span = Math.max(1, t1 - t0);
     let prevX = -1e9; const railW = rail.clientWidth || 800;
     dated.sort((a, b) => t(a) - t(b)).forEach((s) => { const x = 2 + 94 * (t(s) - t0) / span; const px = x / 100 * railW; const alt = px - prevX < 96; if (!alt) prevX = px;
-      rail.insertAdjacentHTML("beforeend", `<div class="tick ${s.date ? "" : "miss"}${alt ? " alt" : ""}" style="left:${x}%">${s.date || "미관측"}<small>${s.label ?? s.year ?? ""}</small></div>`); });
+      const key = mod?.overlays?.[s.label] ? s.label : null;
+      rail.insertAdjacentHTML("beforeend", `<div class="tick ${s.date ? "" : "miss"}${alt ? " alt" : ""}" style="left:${x}%" data-date="${s.date || ""}" data-label="${s.label ?? ""}"${key ? ` data-ov="${key}"` : ""} title="${s.date || "미관측"}">${s.date || "미관측"}<small>${OV_LABEL[s.label] || s.label || s.year || ""}</small></div>`); });
+    rail.querySelectorAll(".tick").forEach((el) => el.addEventListener("click", () => {
+      rail.querySelectorAll(".tick").forEach((x) => x.classList.toggle("is-active", x === el));
+      if (el.dataset.ov) setOverlay(el.dataset.ov);
+      const sr = (mod?.series || []).find((x) => x.date === el.dataset.date);
+      if (state.chart && mod?.series) { const idx = mod.series.findIndex((x) => x.date === el.dataset.date); state.chart.data.datasets.forEach((d, di) => { if (di === 0 || di === 3) d.pointRadius = mod.series.map((_, i) => (i === idx ? 7 : 3.5)); }); state.chart.update(); }
+      if (sr) toast(`${sr.date} ${sr.label ? OV_LABEL[sr.label] || sr.label : ""}: 피해지 NDVI ${sr.burned.median?.toFixed(2) ?? "측정 불가"}, 대조지 ${sr.control.median?.toFixed(2) ?? "측정 불가"}, 회복률 ${sr.recovery_ratio?.toFixed(2) ?? "측정 불가"}`);
+    }));
   }
   function renderChart(series) {
     const labels = series.map((s) => s.date || s.label);
@@ -216,7 +348,7 @@
     Chart.defaults.font.family = '"Barlow Condensed", Pretendard, sans-serif'; Chart.defaults.color = "#3a3a3a";
     state.chart = new Chart($("#chart"), { type: "line", data, options: { animation: { duration: 350 }, plugins: { legend: { labels: { filter: (l) => l.text !== "", boxWidth: 9, boxHeight: 9, font: { size: 11 } } } },
       scales: { y: { min: 0, max: 1, grid: { color: "rgba(20,20,20,.12)" }, ticks: { font: { size: 10 } }, title: { display: true, text: "NDVI", font: { size: 10 } } }, x: { grid: { color: "rgba(20,20,20,.08)" }, ticks: { font: { size: 10 } } } } } });
-    $("#ratioStrip").innerHTML = series.map((s) => `<div class="ratio">${s.label}<b>${s.recovery_ratio == null ? "—" : s.recovery_ratio.toFixed(2)}</b></div>`).join("");
+    $("#ratioStrip").innerHTML = series.map((s) => `<div class="ratio">${OV_LABEL[s.label] || s.label}<b>${s.recovery_ratio == null ? "—" : s.recovery_ratio.toFixed(2)}</b></div>`).join("");
   }
   function renderSeverity(sev) {
     const max = Math.max(...sev.map((s) => s.ha), 1);
@@ -229,18 +361,18 @@
     const mod = state.card.modules[0].module;
     const res = await fetch(`/api/projects/${state.current}/verify/${mod}`, { method: "POST" });
     const r = await res.json().catch(() => ({}));
-    if (!res.ok || !r.data) { toast(r.warnings?.[0] || `재검정 요청 실패 (${res.status})`); return; }   // 배포본(읽기 전용)은 503 + 안내문
-    toast(r.warnings?.[0] || "검정을 시작했습니다. 장면 수에 따라 수 분 걸립니다."); watchJob(r.data.id);
+    if (!res.ok || !r.data) { toast(r.warnings?.[0] || `재검정을 시작하지 못했습니다 (${res.status})`); return; }
+    toast(r.warnings?.[0] || "검정을 시작했습니다. 장면 수에 따라 몇 분 걸립니다."); watchJob(r.data.id);
   });
   function watchJob(jobId) {
     $("#jobBar").hidden = false; $("#btnVerify").disabled = true;
     const tick = async () => {
       const j = (await api(`/api/jobs/${jobId}`)).data; const pr = j.progress || {};
       $("#jobFill").style.transform = `scaleX(${pr.total ? pr.done / pr.total : 0.08})`;
-      $("#jobText").textContent = `${VERDICT[j.status] || j.status} · ${pr.message || ""}${pr.total ? ` (${pr.done}/${pr.total})` : ""}`;
+      $("#jobText").textContent = `${VERDICT[j.status] || j.status}, ${pr.message || ""}${pr.total ? ` (${pr.done}/${pr.total})` : ""}`;
       if (!["queued", "running"].includes(j.status)) {
         clearInterval(state.poll); state.poll = null;
-        toast(j.status === "failed" ? `실패: ${j.error}` : `검정 완료 · ${VERDICT[j.summary?.verdict] || j.status}`);
+        toast(j.status === "failed" ? `실패: ${j.error}` : `검정 완료: ${VERDICT[j.summary?.verdict] || j.status}`);
         setTimeout(() => { $("#jobBar").hidden = true; }, 1200);
         await loadProjects(); await selectProject(state.current);
       }
@@ -249,7 +381,7 @@
   }
 
   // ---------- 채팅(chat.js)에 노출하는 화면 상태 ----------
-  window.AR = { getState: () => ({ current: state.current, card: state.card, overlay: state.overlay }), selectProject, setOverlay };
+  window.AR = { getState: () => ({ current: state.current, card: state.card, overlay: state.overlay }), selectProject, setOverlay, map };
 
   // ---------- 달력·키 ----------
   async function loadCalendar() {
@@ -259,19 +391,19 @@
   }
   async function loadKeys() {
     const r = await api("/api/health"); const keys = r.data.keys;
-    const DESC = { GEMINI_API_KEY: "설명 에이전트(Gemini)", DATA_GO_KR_SERVICE_KEY: "건축물대장 표제부(노후도·구조)", SGIS_CONSUMER_KEY: "SGIS 인증 키", SGIS_CONSUMER_SECRET: "SGIS 시크릿", VWORLD_API_KEY: "브이월드 건물 WFS", KMA_APIHUB_KEY: "기상청 API허브(강우·기온)", SAFETYDATA_SERVICE_KEY: "재난안전데이터 공유플랫폼", PC_SDK_SUBSCRIPTION_KEY: "Planetary Computer 구독키(선택)" };
-    $("#keyChips").innerHTML = Object.entries(keys).filter(([k]) => !k.includes("SECRET")).map(([k, v]) => `<span class="chip ${v ? "on" : ""}">${k.replace(/_API_KEY|_SERVICE_KEY|_CONSUMER_KEY|_SDK_SUBSCRIPTION_KEY/, "")}</span>`).join("");
-    $("#keysTable").innerHTML = `<tr><th>키</th><th>용도</th><th>상태</th></tr>` + Object.entries(keys).map(([k, v]) => `<tr><td><code>${k}</code></td><td>${DESC[k] || ""}</td><td><span class="mark ${v ? "detected" : "waiting_input"}">${v ? "설정됨" : "비어 있음 · 키 필요"}</span></td></tr>`).join("");
+    const DESC = { GEMINI_API_KEY: "설명 대화(Gemini)", DATA_GO_KR_SERVICE_KEY: "건축물대장 표제부", SGIS_CONSUMER_KEY: "통계청 SGIS 인증 키", SGIS_CONSUMER_SECRET: "통계청 SGIS 시크릿", VWORLD_API_KEY: "브이월드 건물 외곽선", KMA_APIHUB_KEY: "기상청 시간강우", SAFETYDATA_KEY_SHELTER: "무더위쉼터(행정안전부)", SAFETYDATA_KEY_RECOVERY: "복구계획 공공시설(행정안전부)", PC_SDK_SUBSCRIPTION_KEY: "Planetary Computer 구독키(선택)" };
+    $("#keyChips").innerHTML = Object.entries(keys).filter(([k]) => !k.includes("SECRET")).map(([k, v]) => `<span class="chip ${v ? "on" : ""}">${k.replace(/_API_KEY|_SERVICE_KEY|_CONSUMER_KEY|_SDK_SUBSCRIPTION_KEY|_KEY/, "")}</span>`).join("");
+    $("#keysTable").innerHTML = `<tr><th>키</th><th>용도</th><th>상태</th></tr>` + Object.entries(keys).map(([k, v]) => `<tr><td><code>${k}</code></td><td>${DESC[k] || ""}</td><td><span class="mark ${v ? "detected" : "waiting_input"}">${v ? "설정됨" : "키 필요"}</span></td></tr>`).join("");
   }
   document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("is-active", x === b));
     const v = b.dataset.view; $("#viewDashboard").hidden = v !== "dashboard"; $("#viewCalendar").hidden = v !== "calendar"; $("#viewKeys").hidden = v !== "keys";
     if (v === "dashboard") setTimeout(() => map.resize(), 50);
   }));
-  let toastTimer; function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; t.classList.remove("hide"); clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.classList.add("hide"); setTimeout(() => (t.hidden = true), 220); }, 3600); }
+  let toastTimer; function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; t.classList.remove("hide"); clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.classList.add("hide"); setTimeout(() => (t.hidden = true), 220); }, 4200); }
 
   (async () => {
     try { await Promise.all([loadProjects(), loadCalendar(), loadKeys()]); const first = state.projects.find((p) => p.results?.fire) || state.projects[0]; if (first) selectProject(first.id); }
-    catch (e) { toast(`초기화 실패: ${e.message}`); }
+    catch (e) { toast(`초기화에 실패했습니다 (${e.message})`); }
   })();
 })();
