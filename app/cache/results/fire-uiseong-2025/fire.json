@@ -2,7 +2,7 @@
  "status": "ok",
  "module": "fire",
  "project_id": "fire-uiseong-2025",
- "computed_at": "2026-11-18T18:29:21",
+ "computed_at": "2026-11-18T18:49:12",
  "design": {
   "orbit": "R103",
   "resolution_m": 40.0,
@@ -299,19 +299,19 @@
     "query": "dnbr",
     "items": [
      {
-      "c": "#e9cf9c",
+      "c": "#f7e26b",
       "t": "경"
      },
      {
-      "c": "#c48a3e",
+      "c": "#f29e2e",
       "t": "중"
      },
      {
-      "c": "#8a5a1e",
+      "c": "#d7301f",
       "t": "중강"
      },
      {
-      "c": "#4a2a12",
+      "c": "#7a0177",
       "t": "강"
      }
     ],

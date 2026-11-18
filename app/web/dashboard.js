@@ -8,7 +8,7 @@
   const SRC = { OBSERVED: "실측", MODEL: "계산", RULE: "규칙", ASSUMPTION: "가정", FORECAST: "예보" };
   const OV_LABEL = { dnbr: "피해등급", pre: "산불 전", post: "진화 직후", lst_before: "시공 전 온도", lst_after: "시공 후 온도", lst_diff: "전후 차이", flood_before: "정비 전 침수", flood_after: "정비 후 침수", flood_change: "전후 비교", none: "없음" };
   const PAIRS = [["pre", "post", "산불 전", "진화 직후"], ["lst_before", "lst_after", "시공 전", "시공 후"], ["flood_before", "flood_after", "정비 전", "정비 후"]];
-  const SEV_COLORS = ["#e9cf9c", "#c48a3e", "#8a5a1e", "#4a2a12"];
+  const SEV_COLORS = ["#f7e26b", "#f29e2e", "#d7301f", "#7a0177"];
   // 지표 장부의 항목 이름. 키는 JSON(재현용)에 남고 화면에는 한글만 적는다
   const KEY_LABEL = {
     burned_forest_ha: "피해 산림 면적", control_ha: "대조지 면적", recovery_ratio_latest: "최근 회복률", did_effect_ndvi: "이중차분 효과(NDVI)", ci95_median_diff: "95% 신뢰구간", mde_ndvi: "검출가능최소효과(NDVI)", valid_pct_min: "유효 화소 비율(최소)",
