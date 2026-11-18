@@ -64,6 +64,8 @@ class ProjectIn(BaseModel):
 @app.post("/api/projects")
 def create_project(body: ProjectIn):
     prj = body.project
+    if config.READ_ONLY:
+        raise HTTPException(503, "읽기 전용 배포본에서는 사업을 저장하지 않는다. 로컬 서버에서 등록한다.")
     for k in ("id", "name", "type", "geometry"):
         if k not in prj:
             raise HTTPException(400, f"missing field {k}")

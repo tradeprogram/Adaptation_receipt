@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <title>적응 영수증</title>
-<meta name="description" content="집행된 기후적응 사업의 효과와 형평성을 위성 관측으로 사후 검증하는 도엽형 대시보드">
+<meta name="description" content="집행된 기후적응 사업의 효과와 형평성을 위성 관측으로 사후 검증해 이행점검 보고서 부록을 만드는 서비스">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
-<link rel="stylesheet" href="sheet.css?v=16">
+<link rel="stylesheet" href="sheet.css?v=17">
 <link rel="stylesheet" href="ink.css?v=5">
-<link rel="stylesheet" href="layout.css?v=7">
+<link rel="stylesheet" href="layout.css?v=8">
 <link rel="stylesheet" href="print3d.css?v=6">
 </head>
 <body>
@@ -49,15 +49,16 @@
       <img class="brand-mark" src="assets/logo.png" alt="" width="239" height="452">
       <span class="brand-word"><span class="brand-name">적응 영수증</span><span class="brand-tag">ADAPTATION RECEIPT · 기후적응 사업 성과 검증</span></span>
     </a>
-    <h1 class="sheet-title"><span class="k">도엽번호 <span id="sheetId">—</span></span><span id="sheetName" class="v">사업을 선택하십시오</span></h1>
+    <h1 class="sheet-title"><span class="k">사업 번호 <span id="sheetId">—</span></span><span id="sheetName" class="v">사업을 선택하십시오</span></h1>
     <div class="sheet-scale"><span class="k">축척</span><span id="sheetScale" class="v">1 : —</span></div>
   </header>
 
   <main class="sheet-body" id="viewDashboard">
     <!-- 좌측 난외: 도엽 색인 -->
-    <aside class="margin-left" aria-label="도엽 색인">
-      <div class="k">도엽 색인</div>
+    <aside class="margin-left" aria-label="사업 목록">
+      <div class="k">사업 목록</div>
       <ol id="projectList" class="index" role="list"></ol>
+      <button class="act new-btn" id="btnNew" type="button" title="사업 대장의 한 줄을 등록하고 검정합니다">+ 새 사업</button>
       <div class="deadline">
         <div class="k">다음 법정 기한</div>
         <div id="deadlineNext" class="deadline-name">—</div>
@@ -131,60 +132,97 @@
       </svg>
     </div>
     <div id="cardEmpty" class="note-empty">
-      <div class="k">난외주기</div>
-      <p>왼쪽 색인에서 사업을 고르면 성과 카드가 출력됩니다.</p>
+      <div class="k">성과 카드</div>
+      <p>왼쪽 목록에서 사업을 고르면 성과 카드가 출력됩니다.</p>
     </div>
+
+    <!-- 새 사업 등록: 사업 대장의 한 줄을 받아 검정한다 -->
+    <form id="regPanel" class="note reg" hidden>
+      <div class="note-head"><h2 class="reg-title">새 사업 등록</h2><button type="button" class="act" id="regClose">닫기</button></div>
+      <p class="meta">사업 대장에 있는 내용만 적으면 됩니다. 위치는 지도에서 끌어 범위를 그립니다.</p>
+      <div class="f">
+        <label for="rType">사업 종류</label><select id="rType"><option value="fire">산불 피해지 복원</option><option value="heat">옥상 차열(쿨루프)</option><option value="flood">배수 정비(침수 방재)</option></select>
+        <label for="rName">사업명</label><input id="rName" required placeholder="예: 2025 ○○군 산불 피해지 복원">
+        <label for="rAgency">집행 기관</label><input id="rAgency" placeholder="예: ○○군 산림과">
+        <label for="rRegion">지역</label><input id="rRegion" placeholder="예: 경북 ○○군">
+        <label for="rBudget">예산(억 원)</label><input id="rBudget" type="number" min="0" step="0.1" placeholder="모르면 비움">
+        <div class="only only-fire"><label for="rEvent">산불 발생일</label><input id="rEvent" type="date"></div>
+        <div class="only only-fire"><label for="rContained">진화일</label><input id="rContained" type="date"></div>
+        <div class="only only-heat only-flood"><label for="rBefore">사업 전 연도</label><input id="rBefore" type="number" min="2015" max="2030" placeholder="예: 2024"></div>
+        <div class="only only-heat only-flood"><label for="rAfter">사업 후 연도</label><input id="rAfter" type="number" min="2015" max="2030" placeholder="예: 2026"></div>
+        <div class="only only-flood"><label for="rStn">기상청 지점번호</label><input id="rStn" placeholder="예: 236(부여)"></div>
+      </div>
+      <div class="reg-geo">
+        <div class="k">위치</div>
+        <div class="reg-row"><button type="button" class="act" id="btnDraw">지도에서 범위 그리기</button><span id="drawInfo" class="meta">아직 범위가 없습니다</span></div>
+        <div class="only only-heat">
+          <div class="reg-row"><button type="button" class="act" id="btnPickT" aria-pressed="false">시공한 동 고르기</button><button type="button" class="act" id="btnPickC" aria-pressed="false">비교할 동 고르기</button><span id="pickInfo" class="meta">지도의 건물을 누르면 담깁니다</span></div>
+        </div>
+      </div>
+      <div class="reg-actions"><button type="submit" class="act act-primary" id="regSubmit">등록하고 검정 시작</button><span id="regMsg" class="meta"></span></div>
+    </form>
+
     <div id="card" class="note" hidden>
       <div class="glow" aria-hidden="true"></div>
       <div class="note-head">
-        <div class="stamp" id="stamp" aria-live="polite"><span class="stamp-word" id="stampWord">미실행</span><span class="stamp-date num" id="stampDate"></span></div>
+        <div class="stamp" id="stamp" aria-live="polite"><span class="stamp-word" id="stampWord">검정 전</span><span class="stamp-date num" id="stampDate"></span></div>
         <div class="note-actions">
-          <button id="btnVerify" class="act act-primary"><svg><use href="#i-stamp"/></svg><span>검증 실행</span></button>
-          <a id="btnCard" class="act" target="_blank" rel="noopener"><svg><use href="#i-print"/></svg><span>카드 인쇄</span></a>
-          <a id="btnJson" class="act" target="_blank" rel="noopener"><svg><use href="#i-json"/></svg><span>JSON</span></a>
+          <a id="btnCard" class="act act-primary" target="_blank" rel="noopener" title="이행점검 보고서에 붙이는 성과 카드(인쇄용)"><svg><use href="#i-print"/></svg><span>보고서 부록</span></a>
+          <button id="btnVerify" class="act"><svg><use href="#i-stamp"/></svg><span>다시 검정</span></button>
         </div>
       </div>
       <div id="jobBar" class="jobbar" hidden><i id="jobFill"></i><span class="num" id="jobText"></span></div>
-      <p id="verdictText" class="verdict"></p>
+
+      <section class="summary" id="summary">
+        <h2 class="sum-head" id="sumHead"></h2>
+        <p class="sum-text" id="sumText"></p>
+        <div class="keynums" id="keyNums"></div>
+        <div class="next" id="nextBlock"><div class="k">다음에 할 일</div><ol id="nextList"></ol></div>
+      </section>
       <p id="cardMeta" class="meta"></p>
       <div id="needs" class="errata" hidden></div>
 
-      <section class="ledger" id="metricsBlock" hidden>
-        <h2>지표 장부</h2>
-        <table class="tbl" id="metricsTable"></table>
-      </section>
-
       <section class="ledger" id="chartBlock" hidden>
-        <h2>회복 단면도 <small>피해지와 대조지의 NDVI 중앙값</small></h2>
+        <h2>식생 회복 추이 <small>피해지와 주변 숲의 식생지수(NDVI)</small></h2>
         <canvas id="chart" height="170" aria-label="회복 곡선"></canvas>
         <div id="ratioStrip" class="ratios"></div>
       </section>
 
-      <section class="ledger" id="severityBlock" hidden>
-        <h2>피해등급 <small>dNBR, Key &amp; Benson 2006</small></h2>
-        <table class="tbl" id="severityTable"></table>
-      </section>
-
-      <section class="ledger" id="eventsBlock" hidden>
-        <h2>호우 사건 <small>첫 위성 관측까지 A 48시간 이내, B 120시간 이내, C 그 이상</small></h2>
-        <table class="tbl" id="eventsTable"></table>
-      </section>
-
       <section class="ledger" id="equityBlock">
-        <h2>형평성 감사 <small>수혜 건물과 관할 전체의 비교</small></h2>
+        <h2>누가 혜택을 받았나 <small>수혜 건물과 관할 전체 비교</small></h2>
         <div id="equityBody"></div>
       </section>
 
-      <section class="ledger" id="limitsBlock" hidden>
-        <h2>한계</h2>
-        <ol id="limitsList" class="limits"></ol>
-      </section>
+      <details class="expert" id="expert">
+        <summary><span>자세한 수치와 근거</span><small>모든 수치, 판정문, 호우 기록, 사용한 위성 사진</small></summary>
+        <p id="verdictText" class="verdict"></p>
 
-      <section class="ledger" id="scenesBlock" hidden>
-        <h2>조제 매니페스트 <small id="scenesCount"></small></h2>
-        <table class="tbl small" id="scenesTable"></table>
-      </section>
+        <section class="ledger" id="metricsBlock" hidden>
+          <h2>모든 수치</h2>
+          <table class="tbl" id="metricsTable"></table>
+        </section>
 
+        <section class="ledger" id="severityBlock" hidden>
+          <h2>피해 정도 <small>위성 지표 dNBR 기준</small></h2>
+          <table class="tbl" id="severityTable"></table>
+        </section>
+
+        <section class="ledger" id="eventsBlock" hidden>
+          <h2>호우와 위성 관측 <small>A: 48시간 안에 촬영, B: 5일 안, C: 그 뒤</small></h2>
+          <table class="tbl" id="eventsTable"></table>
+        </section>
+
+        <section class="ledger" id="limitsBlock" hidden>
+          <h2>유의할 점</h2>
+          <ol id="limitsList" class="limits"></ol>
+        </section>
+
+        <section class="ledger" id="scenesBlock" hidden>
+          <h2>사용한 위성 사진 <small id="scenesCount"></small></h2>
+          <table class="tbl small" id="scenesTable"></table>
+        </section>
+        <p class="meta"><a id="btnJson" target="_blank" rel="noopener">원자료(JSON) 보기</a></p>
+      </details>
     </div>
   </aside>
 
@@ -212,27 +250,37 @@
     <div class="passrail" id="passrail" aria-label="관측 장면"></div>
     <div class="colophon">
     <nav class="sheet-nav" aria-label="보기">
-      <button class="tab is-active" data-view="dashboard">도엽</button>
-      <button class="tab" data-view="calendar">법정 달력</button>
-      <button class="tab" data-view="keys">연동 상태</button>
+      <button class="tab is-active" data-view="dashboard">내 사업</button>
+      <button class="tab" data-view="summary">관할 요약</button>
+      <button class="tab" data-view="calendar">보고 일정</button>
+      <button class="tab" data-view="keys">자료 연결</button>
     </nav>
       <span class="credits">자료 Copernicus Sentinel-1/2 (ESA) · Landsat 8/9 (USGS) · Microsoft Planetary Computer · 공공데이터포털 · 통계청 SGIS</span>
-      <span id="colophonRight" class="num">조제 —</span>
-      <span id="keyChips" class="keychips" title="외부 API 키 상태"></span>
+      <span id="colophonRight" class="num">작성 —</span>
+      <span id="keyChips" class="keychips" title="외부 API 키 상태" hidden></span>
     </div>
   </footer>
 
   <!-- 보조 보기 -->
+  <section id="viewSummary" class="sheet-body alt" hidden>
+    <div class="alt-inner sumview">
+      <h2 class="alt-title">관할 적응 사업 성과 요약</h2>
+      <p class="lead" id="sumLead">검정한 사업의 결론을 한 표로 모았습니다. 행을 누르면 그 사업의 성과 카드로 갑니다.</p>
+      <div class="kpi" id="kpi"></div>
+      <table class="tbl sumtbl" id="sumTable"></table>
+      <p class="meta" id="sumEquity"></p>
+    </div>
+  </section>
   <section id="viewCalendar" class="sheet-body alt" hidden>
     <div class="alt-inner">
-      <h2 class="alt-title">법정 적응 거버넌스 달력</h2>
+      <h2 class="alt-title">보고 일정</h2>
       <p class="lead">위성 관측은 5월부터 10월까지 쌓이고, 분석과 납품은 1월부터 3월, 이행점검 제출은 4월 30일이다.</p>
       <table class="tbl" id="calendarTable"></table>
     </div>
   </section>
   <section id="viewKeys" class="sheet-body alt" hidden>
     <div class="alt-inner">
-      <h2 class="alt-title">외부 연동 상태</h2>
+      <h2 class="alt-title">자료 연결</h2>
       <p class="lead">위성 자료는 키 없이 동작한다. 아래 키는 형평성 감사와 설명 대화에 쓰이며, 비어 있으면 해당 항목은 키 필요로 표시된다.</p>
       <table class="tbl" id="keysTable"></table>
       <p class="meta">키는 <code>app/.env</code>에 넣고 서버를 다시 시작한다.</p>
@@ -244,7 +292,7 @@
 
 <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="dashboard.js?v=14"></script>
+<script src="dashboard.js?v=16"></script>
 <script src="chat.js?v=4"></script>
 </body>
 </html>

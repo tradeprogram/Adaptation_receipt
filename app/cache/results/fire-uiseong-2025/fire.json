@@ -2,7 +2,7 @@
  "status": "ok",
  "module": "fire",
  "project_id": "fire-uiseong-2025",
- "computed_at": "2026-11-18T20:11:00",
+ "computed_at": "2026-11-18T20:34:40",
  "design": {
   "orbit": "R103",
   "resolution_m": 40.0,
@@ -415,7 +415,7 @@
       "t": "강"
      }
     ],
-    "note": "dNBR 등급, Key & Benson 2006"
+    "note": "불탄 정도. 위성 지표 dNBR 기준(Key & Benson 2006)"
    },
    "pre": {
     "label": "산불 전",
