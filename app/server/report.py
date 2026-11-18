@@ -62,41 +62,41 @@ def plain_summary(m: str, r: dict) -> dict:
         key = [{"label": "피해 산림 면적", "value": ha, "unit": "ha"}, {"label": "회복률(피해지 ÷ 주변 숲)", "value": round(ratio * 100) if ratio is not None else None, "unit": "%"},
                {"label": "주변 숲과의 차이", "value": round(eff, 3) if eff is not None else None, "unit": "식생지수", "signed": True}]
         if code == "gap_remaining" and ratio is not None:
-            head = "피해지가 아직 주변 숲만큼 회복되지 않았습니다"
-            expl = f"최근 관측({last.get('date', '')})에서 피해지의 식생지수는 주변 숲의 {ratio * 100:.0f}% 수준입니다. 주변 숲과 견준 변화 차이는 {eff:+.3f}이며" + (f" 오차 범위({ci[0]:+.3f}~{ci[1]:+.3f})가 0을 포함하지 않아 우연으로 보기 어렵습니다." if ci else "입니다.")
-            nxt = ["회복이 늦은 구역(지도의 붉은 피해 정도가 짙은 사면)부터 보식과 사방 예산을 배정합니다.", "내년 같은 생장기에 같은 방법으로 다시 검정해 회복률 변화를 보고서에 이어 적습니다.", "식생지수는 풀과 관목의 회복도 포함하므로, 나무의 활착은 현장조사로 확인합니다."]
+            head = "피해지가 아직 주변 숲만큼 회복되지 않았다"
+            expl = f"최근 관측일인 {last.get('date', '')} 기준으로 피해지의 식생지수는 주변 숲의 {ratio * 100:.0f}% 수준이다. 주변 숲과 견준 변화 차이는 {eff:+.3f}이고" + (f", 오차 범위 {ci[0]:+.3f}~{ci[1]:+.3f}가 0을 포함하지 않으므로 우연한 차이로 보기 어렵다." if ci else "이다.")
+            nxt = ["회복이 늦은 사면부터 보식과 사방 예산을 배정한다. 지도에서 피해 정도가 짙은 붉은 구역이 그 대상이다.", "내년 같은 생장기에 같은 방법으로 다시 검정하고 회복률 변화를 보고서에 이어 적는다.", "식생지수는 풀과 관목의 회복도 함께 잡으므로 나무의 활착은 현장조사로 확인한다."]
         elif code == "recovered" and ratio is not None:
-            head = "피해지가 주변 숲 수준으로 회복되었습니다"
-            expl = f"최근 관측({last.get('date', '')})에서 피해지의 식생지수는 주변 숲의 {ratio * 100:.0f}% 수준이며, 주변 숲과의 변화 차이({eff:+.3f})는 오차 범위 안입니다."
-            nxt = ["이 카드를 이행점검 보고서 부록으로 첨부합니다.", "나무의 활착은 현장조사로 따로 확인합니다."]
+            head = "피해지가 주변 숲 수준으로 회복되었다"
+            expl = f"최근 관측일인 {last.get('date', '')} 기준으로 피해지의 식생지수는 주변 숲의 {ratio * 100:.0f}% 수준이며, 주변 숲과의 변화 차이 {eff:+.3f}은 오차 범위 안에 있다."
+            nxt = ["이 카드를 이행점검 보고서 부록으로 첨부한다.", "나무의 활착은 현장조사로 따로 확인한다."]
     elif m == "heat":
         eff, mde, area, a1 = val("did_effect_lst_c"), val("mde_c"), val("treated_area_ha"), val("area_for_mde_1c_ha")
         key = [{"label": "비교 동 대비 온도 변화", "value": round(eff, 2) if eff is not None else None, "unit": "℃", "signed": True},
                {"label": "알아볼 수 있는 최소 변화", "value": round(mde, 2) if mde is not None else None, "unit": "℃"}, {"label": "시공 면적", "value": round(area, 2) if area is not None else None, "unit": "ha"}]
         if code == "undetected" and eff is not None and mde is not None:
-            head = "이 시공 규모로는 온도 효과를 확인할 수 없습니다"
-            expl = f"시공 동의 낮 지표면 온도는 비교 동보다 {eff:+.2f}℃ 변했지만, 시공 면적 {area:.2f} ha에서 위성 사진(30 m)으로 알아볼 수 있는 최소 변화는 {mde:.2f}℃입니다. 효과가 없다는 뜻이 아니라, 사진 해상도에 비해 시공 면적이 작다는 뜻입니다."
-            nxt = [f"다음 시공은 한 블록({a1:.1f} ha 이상)으로 묶어야 1℃ 변화를 확인할 수 있습니다." if a1 else "다음 시공은 블록 단위로 묶어 발주합니다.", "세대 밀도가 높은 동부터 시공하는 다음 집행 순위(아래 '누가 혜택을 받았나')를 참고합니다.", "낮 지표면 온도이므로 밤 더위와 실내 온도는 별도 자료로 봅니다."]
+            head = "이 시공 규모로는 온도 효과를 확인할 수 없다"
+            expl = f"시공 동의 낮 지표면 온도는 비교 동보다 {eff:+.2f}℃ 변했다. 그러나 시공 면적 {area:.2f} ha에서 30 m 위성 사진으로 알아볼 수 있는 최소 변화는 {mde:.2f}℃이므로 이 차이는 판정 범위 밖이다. 효과가 없다는 뜻은 아니며, 사진 해상도에 견주어 시공 면적이 작다는 뜻이다."
+            nxt = [f"다음 시공은 한 블록 {a1:.1f} ha 이상으로 묶어야 1℃ 변화를 확인할 수 있다." if a1 else "다음 시공은 블록 단위로 묶어 발주한다.", "세대 밀도가 높은 동부터 시공하는 다음 집행 순위를 아래 형평성 난에서 참고한다.", "낮 지표면 온도이므로 밤 더위와 실내 온도는 별도 자료로 본다."]
         elif code == "detected" and eff is not None:
-            head = f"시공 동의 낮 지표면 온도가 비교 동보다 {eff:+.2f}℃ 변했습니다"
-            expl = f"알아볼 수 있는 최소 변화 {mde:.2f}℃를 넘는 차이입니다." if mde else ""
-            nxt = ["이 카드를 이행점검 보고서 부록으로 첨부합니다.", "같은 설계로 다른 단지에도 시공 전후를 비교합니다."]
+            head = f"시공 동의 낮 지표면 온도가 비교 동보다 {eff:+.2f}℃ 변했다"
+            expl = f"알아볼 수 있는 최소 변화 {mde:.2f}℃를 넘는 차이다." if mde else ""
+            nxt = ["이 카드를 이행점검 보고서 부록으로 첨부한다.", "같은 설계로 다른 단지에도 시공 전후를 비교한다."]
     elif m == "flood":
         hb, ha_, hpb, hpa, npct = val("flooded_ha_before"), val("flooded_ha_after"), val("flooded_ha_per_mm_before"), val("flooded_ha_per_mm_after"), val("flooded_change_pct_rain_adjusted")
         key = [{"label": "정비 전 침수 면적", "value": round(hb) if hb is not None else None, "unit": "ha"}, {"label": "정비 후 침수 면적", "value": round(ha_) if ha_ is not None else None, "unit": "ha"},
                {"label": "비의 세기를 감안한 변화", "value": round(npct) if npct is not None else None, "unit": "%", "signed": True}]
         ev = r.get("events") or []; rb = [e for e in ev if e.get("phase") == "before" and (e.get("stage2") or {}).get("flooded_ha") is not None]; ra = [e for e in ev if e.get("phase") == "after" and (e.get("stage2") or {}).get("flooded_ha") is not None]
         if code in ("not_reduced", "reduced") and hb is not None and ha_ is not None:
-            head = "정비 후에도 침수 면적이 줄지 않았습니다" if code == "not_reduced" else "정비 후 침수 면적이 줄었습니다"
+            head = "정비 후에도 침수 면적이 줄지 않았다" if code == "not_reduced" else "정비 후 침수 면적이 줄었다"
             rain_b = max((e.get("rain") or {}).get("max_3h", 0) for e in rb) if rb else None; rain_a = max((e.get("rain") or {}).get("max_3h", 0) for e in ra) if ra else None
-            expl = f"정비 전 호우에는 {hb:,.0f} ha, 정비 후 호우에는 {ha_:,.0f} ha가 잠긴 것으로 위성 레이더에 잡혔습니다."
+            expl = f"정비 전 호우에는 {hb:,.0f} ha, 정비 후 호우에는 {ha_:,.0f} ha가 잠긴 것으로 위성 레이더에 잡혔다."
             if hpb is not None and hpa is not None:
-                expl += f" 비 1 mm당 침수 면적은 {hpb:.2f}에서 {hpa:.2f} ha로 {npct:+.0f}% 변했습니다."
+                expl += f" 비 1 mm당 침수 면적은 {hpb:.2f}에서 {hpa:.2f} ha로 {npct:+.0f}% 변했다."
             if rain_b and rain_a:
-                expl += f" 정비 후 호우(3시간 최대 {rain_a:.0f} mm)가 정비 전({rain_b:.0f} mm)보다 강했으므로, 이 변화는 사업 효과만의 결과가 아닙니다."
-            nxt = ["정비 후에도 잠긴 구역(지도의 '정비 후에만 침수')을 현장조사 대상에 올립니다.", "다음 호우 뒤 같은 방법으로 다시 비교해 보고서에 이어 적습니다.", "위성이 지나간 시각의 수면이므로 최대 침수 범위와 다를 수 있습니다."] if code == "not_reduced" else ["이 카드를 이행점검 보고서 부록으로 첨부합니다.", "다음 호우 뒤 같은 방법으로 다시 비교합니다."]
+                expl += f" 다만 정비 후 호우는 3시간 최대 {rain_a:.0f} mm로 정비 전의 {rain_b:.0f} mm보다 강했으므로, 이 변화는 사업 효과와 호우 강도의 차이가 섞인 결과다."
+            nxt = ["정비 후에도 잠긴 구역을 현장조사 대상에 올린다. 지도에서 정비 후에만 침수로 표시된 곳이 그 대상이다.", "다음 호우 뒤 같은 방법으로 다시 비교해 보고서에 이어 적는다.", "위성이 지나간 시각의 수면이므로 최대 침수 범위보다 작게 잡힌다."] if code == "not_reduced" else ["이 카드를 이행점검 보고서 부록으로 첨부한다.", "다음 호우 뒤 같은 방법으로 다시 비교한다."]
     if code in ("not_run", "waiting_input"):
-        head = "아직 검정하지 않았습니다" if code == "not_run" else "검정에 필요한 입력이 있습니다"; nxt = ["'다시 검정'을 누르면 공개 위성 자료로 계산합니다."]
+        head = "아직 검정하지 않았다" if code == "not_run" else "검정에 필요한 입력이 남아 있다"; nxt = ["다시 검정을 누르면 공개 위성 자료로 계산한다."]
     return {"code": code, "verdict_plain": PLAIN_VERDICT.get(code, code), "headline": head, "explain": expl, "key": key, "next": nxt}
 
 

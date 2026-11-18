@@ -129,7 +129,7 @@ def reallocation(project: dict, key: str) -> dict | None:
                 within.append(r["dong"])
         else:
             r["cum_cost_krw"] = None
-    return {"rule": "지붕 100 m²당 세대수 내림차순(동률이면 사용승인 오래된 순). 가중치 합성 없이 두 열을 그대로 공개한다.",
+    return {"rule": "지붕 100 m²당 세대수가 많은 동이 앞서고, 같으면 사용승인이 오래된 동이 앞선다. 가중치를 섞지 않고 두 열을 그대로 공개한다.",
             "unit_cost_krw_m2": unit, "budget_krw": budget, "within_budget": within, "rows": rows,
             "note": "세대수, 건축면적, 사용승인일은 건축물대장 표제부 실측값이다. 단가는 입력값이며 없으면 누적 지붕면적까지만 제시한다."}
 
