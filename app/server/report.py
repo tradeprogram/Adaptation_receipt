@@ -13,7 +13,7 @@ from . import config
 
 _env = Environment(loader=FileSystemLoader(str(Path(__file__).parent / "templates")), autoescape=select_autoescape(["html"]))
 
-MODULE_LABEL = {"fire": "산불 피해지 복구·복원", "heat": "옥상 차열·녹화(열 저감)", "flood": "하천·배수 정비(침수 방재)", "equity": "형평성 감사"}
+MODULE_LABEL = {"fire": "산불 피해지 복원", "heat": "옥상 차열(열 저감)", "flood": "배수 정비(침수 방재)", "equity": "형평성 감사"}
 BADGE_LABEL = {"OBSERVED": "실측", "MODEL": "계산", "RULE": "규칙", "ASSUMPTION": "가정", "FORECAST": "예보"}
 
 
@@ -37,7 +37,7 @@ def build_card(project: dict, results: dict[str, dict | None], equity: dict | No
     modules = []
     for m, r in results.items():
         if r is None:
-            modules.append({"module": m, "label": MODULE_LABEL.get(m, m), "status": "not_run", "verdict": {"code": "not_run", "text": "아직 실행되지 않음"}, "metrics": [], "limitations": []})
+            modules.append({"module": m, "label": MODULE_LABEL.get(m, m), "status": "not_run", "verdict": {"code": "not_run", "text": "아직 검정하지 않았다."}, "metrics": [], "limitations": []})
             continue
         rows = []
         for k, mt in (r.get("metrics") or {}).items():
@@ -51,7 +51,7 @@ def build_card(project: dict, results: dict[str, dict | None], equity: dict | No
         eq = {"status": equity["status"], "warnings": equity["warnings"], "data": equity["data"]}
     return {"project": {k: project.get(k) for k in ("id", "name", "type", "agency", "region", "budget_krw", "period", "legal_basis", "description", "event_date", "contained_date")},
             "generated_at": dt.datetime.now().isoformat(timespec="seconds"), "modules": modules, "equity": eq,
-            "badges": BADGE_LABEL, "disclaimer": "모든 수치에는 출처 배지가 붙는다. '측정 불가'는 0이 아니라 표본 부족·관측 공백을 뜻한다. 미검출은 효과가 없다는 증명이 아니다."}
+            "badges": BADGE_LABEL, "disclaimer": "모든 수치에는 출처 배지가 붙는다. 측정 불가는 표본 부족이나 관측 공백을 뜻하며 0이 아니다. 미검출은 효과가 없다는 증명이 아니다."}
 
 
 def render_html(card: dict) -> str:

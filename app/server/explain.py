@@ -36,7 +36,7 @@ def answer(card: dict, question: str, history: list[dict] | None = None) -> dict
     key = config.KEYS["GEMINI_API_KEY"]
     fallback = template_answer(card, question)
     if not key:
-        return degraded({"answer": fallback, "source": "template"}, ["GEMINI_API_KEY 없음 — 템플릿 설명으로 대체"])
+        return degraded({"answer": fallback, "source": "template"}, ["GEMINI_API_KEY가 없어 템플릿 설명으로 대체했다"])
     try:
         from google import genai
         client = genai.Client(api_key=key)
@@ -50,4 +50,4 @@ def answer(card: dict, question: str, history: list[dict] | None = None) -> dict
             return degraded({"answer": fallback, "source": "template", "rejected": text[:400], "unknown_numbers": bad}, ["모델 응답에 카드에 없는 수치가 있어 템플릿으로 교체"])
         return ok({"answer": text, "source": config.KEYS["GEMINI_MODEL"]})
     except Exception as e:
-        return degraded({"answer": fallback, "source": "template"}, [f"설명 모델 호출 실패({type(e).__name__}) — 템플릿으로 대체"])
+        return degraded({"answer": fallback, "source": "template"}, [f"설명 모델 호출 실패({type(e).__name__}), 템플릿으로 대체했다"])

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>적응 영수증 — {{ card.project.name }}</title>
+<title>적응 영수증, {{ card.project.name }}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
@@ -43,7 +43,7 @@
   {% set m0 = card.modules[0] if card.modules else none %}
   {% set code = m0.verdict.code if m0 else 'not_run' %}
   <div class="head">
-    <div><div class="k">적응 영수증 · 도엽번호 {{ card.project.id }}</div><h1>{{ card.project.name }}</h1><div class="k" style="text-transform:none;letter-spacing:.04em">기후적응 사업 성과·형평성 검증 카드 — 조제 {{ card.generated_at }}</div></div>
+    <div><div class="k">적응 영수증, 도엽번호 {{ card.project.id }}</div><h1>{{ card.project.name }}</h1><div class="k" style="text-transform:none;letter-spacing:.04em">기후적응 사업 성과와 형평성 검증 카드, 조제 {{ card.generated_at }}</div></div>
     <div class="stamp {{ 'neutral' if code in ['not_run','waiting_input','unmeasured','waiting'] else code }}"><b>{{ {'detected':'효과 검출','recovered':'대조지 수준 회복','gap_remaining':'회복 격차 잔존','undetected':'미검출','unmeasured':'측정 불가','ready':'2단계 가능','waiting':'대기','waiting_input':'입력 대기','not_run':'미실행','failed':'실패','reduced':'침수 범위 감소','not_reduced':'침수 범위 미감소'}.get(code, code) }}</b><span>{{ (m0.computed_at or '')[:10] if m0 else '' }} 검정</span></div>
   </div>
   <div class="meta">
@@ -57,7 +57,7 @@
 
   {% for m in card.modules %}
   <h2>{{ m.label }}</h2>
-  <div class="verdict {{ m.verdict.code }}"><b>판정 · {{ {'detected':'효과 검출','recovered':'대조지 수준 회복','gap_remaining':'회복 격차 잔존','undetected':'미검출','unmeasured':'측정 불가','ready':'2단계 실행 가능','waiting':'대기','waiting_input':'입력 대기','not_run':'미실행','failed':'실패','reduced':'침수 범위 감소','not_reduced':'침수 범위 미감소'}.get(m.verdict.code, m.verdict.code) }}</b> — {{ m.verdict.text }}</div>
+  <div class="verdict {{ m.verdict.code }}"><b>판정 {{ {'detected':'효과 검출','recovered':'대조지 수준 회복','gap_remaining':'회복 격차 잔존','undetected':'미검출','unmeasured':'측정 불가','ready':'2단계 실행 가능','waiting':'대기','waiting_input':'입력 대기','not_run':'미실행','failed':'실패','reduced':'침수 범위 감소','not_reduced':'침수 범위 미감소'}.get(m.verdict.code, m.verdict.code) }}</b> {{ m.verdict.text }}</div>
   {% if m.needs %}<div class="warn">필요한 입력: {{ m.needs|join(", ") }}</div>{% endif %}
   {% if m.metrics %}
   <table>
@@ -78,8 +78,8 @@
   {% if m.events %}
   <table style="margin-top:8px"><tr><th>사건</th><th>정점</th><th>단계</th><th>등급</th><th class="num">첫 관측(시간 후)</th></tr>{% for e in m.events %}<tr><td>{{ e.name }}</td><td>{{ e.event_peak }}</td><td>{{ e.phase }}</td><td><b>{{ e.grade }}</b></td><td class="num">{{ e.first_pass_hours if e.first_pass_hours is not none else "미관측" }}</td></tr>{% endfor %}</table>
   {% endif %}
-  {% if m.design %}<div style="font-size:11px;color:var(--muted);margin-top:8px"><b>설계:</b> {% for k,v in m.design.items() %}{{ k }}={{ v }}{% if not loop.last %} · {% endif %}{% endfor %}</div>{% endif %}
-  {% if m.scenes %}<details style="margin-top:6px"><summary style="font-size:11px;color:var(--muted);cursor:pointer">재현 매니페스트 — 장면 {{ m.scenes|length }}건{% if m.failed %}, 실패 {{ m.failed|length }}건{% endif %}</summary>
+  {% if m.design %}<div style="font-size:11px;color:var(--muted);margin-top:8px"><b>설계:</b> {% for k,v in m.design.items() %}{{ k }}={{ v }}{% if not loop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+  {% if m.scenes %}<details style="margin-top:6px"><summary style="font-size:11px;color:var(--muted);cursor:pointer">재현 매니페스트, 장면 {{ m.scenes|length }}건{% if m.failed %}, 실패 {{ m.failed|length }}건{% endif %}</summary>
     <table style="font-size:11px"><tr><th>시점</th><th>관측일</th><th>장면 ID</th><th>기준선</th><th class="num">구름%</th><th class="num">유효%</th></tr>
     {% for s in m.scenes %}<tr><td>{{ s.label or s.year }}</td><td>{{ s.date or "없음" }}</td><td style="word-break:break-all">{{ (s.ids|join(", ")) if s.ids is defined else s.id }}</td><td>{{ s.processing_baseline or "" }}</td><td class="num">{{ "%.1f"|format(s.cloud_cover) if s.cloud_cover is not none else "" }}</td><td class="num">{{ s.valid_pct if s.valid_pct is defined else "" }}</td></tr>{% endfor %}
     {% for f in m.failed %}<tr><td colspan="6" class="none">실패: {{ f }}</td></tr>{% endfor %}</table></details>{% endif %}
@@ -89,16 +89,16 @@
   <h2>형평성 감사</h2>
   {% if card.equity %}
     {% if card.equity.status != "ok" %}<div class="warn">{{ card.equity.warnings|join(" / ") }}</div>
-    <div style="font-size:12px;color:var(--muted);margin-top:6px">지표 설계: {{ card.equity.data.design.indicators|join(", ") }} · 단위: {{ card.equity.data.design.unit }}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px">지표 설계: {{ card.equity.data.design.indicators|join(", ") }}, 단위 {{ card.equity.data.design.unit }}</div>
     {% else %}
     <table><tr><th>지표</th><th class="num">값</th><th>n</th><th>출처</th></tr>{% for k,mt in card.equity.data.metrics.items() %}<tr><td>{{ k }}</td><td class="num">{{ mt.value if mt.value is not none else "측정 불가" }}</td><td>{{ mt.n or "" }}</td><td><span class="badge {{ mt.badge }}">{{ card.badges[mt.badge] }}</span></td></tr>{% endfor %}</table>
     {% set ra = card.equity.data.reallocation %}{% if ra and ra.rows %}
-    <div style="font-size:12px;font-weight:700;margin-top:10px">다음 집행 순위 시뮬레이션 <span style="font-weight:400;color:var(--muted)">— {{ ra.rule }}</span></div>
+    <div style="font-size:12px;font-weight:700;margin-top:10px">다음 집행 순위 시뮬레이션 <span style="font-weight:400;color:var(--muted)">{{ ra.rule }}</span></div>
     <table><tr><th>순위</th><th>동</th><th class="num">세대</th><th class="num">지붕 m²</th><th class="num">세대/100m²</th><th class="num">누적 세대</th><th class="num">누적 지붕 m²</th><th>상태</th></tr>
     {% for r in ra.rows %}<tr><td class="num">{{ r.rank }}</td><td>{{ r.dong }}</td><td class="num">{{ r.households }}</td><td class="num">{{ r.roof_area_m2 }}</td><td class="num">{{ r.households_per_100m2 }}</td><td class="num">{{ r.cum_households if r.cum_households is not none else "—" }}</td><td class="num">{{ r.cum_roof_area_m2 if r.cum_roof_area_m2 is not none else "—" }}</td><td>{{ {"treated":"시공","control":"대조","candidate":"후보"}[r.status] }}</td></tr>{% endfor %}</table>
     <div style="font-size:11px;color:var(--muted)">{{ ra.note }}</div>{% endif %}
     {% endif %}
-  {% else %}<div class="warn">형평성 감사가 실행되지 않았다.</div>{% endif %}
+  {% else %}<div class="warn">형평성 감사 미실행</div>{% endif %}
 
   <div class="foot">{{ card.disclaimer }} 자료: Copernicus Sentinel-1/2 (ESA), Landsat 8/9 (USGS) via Microsoft Planetary Computer; 공공데이터포털; 통계청 SGIS.</div>
 </div>

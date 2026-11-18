@@ -6,9 +6,9 @@
   const body = $("#agentBody"), form = $("#agentForm"), input = $("#agentInput"), send = $("#agentSend"), status = $("#agentStatus"), quick = $("#agentQuick"), root = $("#agent");
   const messages = []; let lastHandoff = null;
   const QUICK = [
-    { label: "판정 요약", prompt: "이 사업의 효과가 검출되었나요? 판정과 근거를 요약해줘" },
+    { label: "판정 요약", prompt: "효과가 검출되었나요? 판정과 근거를 요약해줘" },
     { label: "보고서 문장", prompt: "이 결과를 이행점검 보고서에 넣을 문장으로 정리해줘" },
-    { label: "재현 정보", prompt: "어떤 위성 장면과 궤도로 계산했는지 재현 정보를 알려줘" },
+    { label: "재현 정보", prompt: "어떤 위성 장면과 궤도로 계산했는지 알려줘" },
     { label: "한계", prompt: "이 판정의 한계와 주의할 점을 설명해줘" },
   ];
   const AR = () => window.AR || {};
@@ -33,7 +33,7 @@
       addAssistant(data.answer || "답변을 만들지 못했습니다.", data.actions || [], { evidence: data.evidence, trace: data.tool_trace, handoff: data.handoff });
       status.textContent = data.source === "gemini" ? `Gemini · ${data.model}` : (data.warnings?.[0] || "로컬 요약");
     } catch (e) {
-      addAssistant(`서버에 연결하지 못했습니다 (${e.message}). 난외주기의 판정과 지표 장부를 직접 확인해 주세요.`, []);
+      addAssistant(`서버에 연결하지 못했습니다 (${e.message}).`, []);
       status.textContent = "연결 실패";
     } finally { setBusy(false); }
   }
@@ -51,8 +51,7 @@
     const ev = Array.isArray(meta.evidence) ? meta.evidence : []; const tr = Array.isArray(meta.trace) ? meta.trace : []; const h = meta.handoff;
     if (!ev.length && !tr.length && !h) return;
     const chips = [];
-    if (h?.intent) chips.push(el("span", { class: "agent-chip intent", text: `intent · ${h.intent}` }));
-    if (tr.length) { const ok = tr.filter((t) => t.status === "ok").length; chips.push(el("span", { class: `agent-chip ${ok < tr.length ? "miss" : ""}`, text: `도구 ${ok}/${tr.length}` })); }
+    if (tr.length) { const ok = tr.filter((t) => t.status === "ok").length; chips.push(el("span", { class: `agent-chip ${ok < tr.length ? "miss" : ""}`, text: `근거 ${ok}/${tr.length}` })); }
     box.appendChild(el("div", { class: "agent-meta" }, chips));
     if (ev.length) box.appendChild(el("div", { class: "agent-ev" }, ev.slice(0, 4).map((e) => el("div", { class: `agent-ev-card ${e.measured === false || /키 필요|미실행|입력 대기/.test(e.title || "") ? "miss" : ""}` }, el("b", { text: `${e.kind} · ${e.title || ""}` }), el("span", { text: e.summary || "" })))));
     if (h?.steps?.length) box.appendChild(el("div", { class: "agent-plan" }, h.steps.map((s) => el("span", { class: `agent-step ${s.status === "ok" ? "" : "miss"}`, text: `${s.status === "ok" ? "✓" : "!"} ${s.label}` }))));
@@ -77,7 +76,7 @@
     };
     next();
   }
-  function setBusy(b) { root.setAttribute("aria-busy", b ? "true" : "false"); send.disabled = b; input.disabled = b; if (b) status.textContent = "카드 읽는 중…"; }
+  function setBusy(b) { root.setAttribute("aria-busy", b ? "true" : "false"); send.disabled = b; input.disabled = b; if (b) status.textContent = "카드 읽는 중"; }
 
   // 인장 버튼으로 열고 닫기 — 패널 높이는 지면(.plate) 높이에 맞춘다
   const fab = $("#aiFab"), closeBtn = $("#agentClose");
@@ -92,5 +91,5 @@
   input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
   for (const q of QUICK) quick.appendChild(el("button", { type: "button", text: q.label, onclick: () => ask(q.prompt) }));
   window.addEventListener("ar:project-selected", () => { status.textContent = `도엽 ${(AR().getState?.().current || "").toUpperCase()}`; });
-  addAssistant("무엇을 확인할까요? 저는 현재 도엽의 성과 카드(판정·지표·장면 매니페스트·한계)를 읽고, 거기 적힌 수치만 인용해 답합니다.", []);
+  addAssistant("현재 사업의 성과 카드에 적힌 수치만 근거로 답합니다. 무엇을 확인할까요?", []);
 })();

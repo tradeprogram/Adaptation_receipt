@@ -131,7 +131,7 @@ def reallocation(project: dict, key: str) -> dict | None:
             r["cum_cost_krw"] = None
     return {"rule": "지붕 100 m²당 세대수 내림차순(동률이면 사용승인 오래된 순). 가중치 합성 없이 두 열을 그대로 공개한다.",
             "unit_cost_krw_m2": unit, "budget_krw": budget, "within_budget": within, "rows": rows,
-            "note": "세대수·건축면적·사용승인일은 건축물대장 표제부 실측값. 단가는 입력값(가정)이며 미입력 시 누적 지붕면적까지만 제시한다."}
+            "note": "세대수, 건축면적, 사용승인일은 건축물대장 표제부 실측값이다. 단가는 입력값이며 없으면 누적 지붕면적까지만 제시한다."}
 
 
 def run(project: dict) -> dict:
@@ -139,12 +139,12 @@ def run(project: dict) -> dict:
     key = config.KEYS["DATA_GO_KR_SERVICE_KEY"]
     warnings = []
     if not bens:
-        warnings.append("수혜 건물·필지 목록(beneficiaries)이 없다. 사업 집행 대장에서 주소를 받아 입력한다.")
+        warnings.append("수혜 건물 목록이 없다. 사업 집행 대장의 주소를 입력한다.")
     if not key:
-        warnings.append("DATA_GO_KR_SERVICE_KEY 필요 — 건축물대장 표제부(노후도·구조) 조회 불가")
+        warnings.append("DATA_GO_KR_SERVICE_KEY가 없어 건축물대장 표제부를 조회하지 못했다.")
     if not (config.KEYS["SGIS_CONSUMER_KEY"] and config.KEYS["SGIS_CONSUMER_SECRET"]):
-        warnings.append("SGIS_CONSUMER_KEY/SECRET 필요 — 관할 고령·1인가구 기준 분포 조회 불가")
-    design = {"indicators": ["노후건물(사용승인 30년 초과) 비율", "수혜 지역 노년부양비·노령화지수 vs 관할", "집중지수"], "unit": "건물·필지·격자(개인 식별 없음)"}
+        warnings.append("SGIS_CONSUMER_KEY와 SECRET이 없어 관할 인구 지표를 조회하지 못했다.")
+    design = {"indicators": ["노후건물(사용승인 30년 초과) 비율", "수혜 지역과 관할의 노년부양비, 노령화지수 비교"], "unit": "건물 단위, 개인 식별 없음"}
     if not bens or not key:
         return degraded({"module": "equity", "project_id": project["id"], "beneficiaries_n": len(bens), "metrics": {}, "design": design}, warnings)
 

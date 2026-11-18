@@ -3,6 +3,7 @@ app/.env
 app/cache/*
 !app/cache/results/
 app/cache/results/*/*.npz
+!app/cache/results/*/layers.npz
 app/cache_test/
 _preview/
 _tpl/

@@ -163,6 +163,8 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
 
     severity_png(cls, None, out_dir / "dnbr.png"); truecolor_png(stack["pre"], out_dir / "pre.png"); truecolor_png(stack["post"], out_dir / "post.png")
     stac.save_json_atomic(out_dir / "scenes.json", {"scenes": scenes, "failed": failed})
+    # 지도 클릭 조회용 격자(표시 범위 bbox에 선형 대응). 0 = 등급 없음
+    stac.save_npz_atomic(out_dir / "layers.npz", bbox=np.array(bbox, dtype="float64"), dnbr=np.nan_to_num(cls, nan=0).astype("uint8"))
 
     burned_ha = int(round(float(burn.sum()) * px_ha))
     return {
@@ -171,22 +173,25 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
         "design": {"orbit": orbit, "resolution_m": res, "dnbr_threshold": thr, "prefire_ndvi_min": ndvi_min, "control_abs_dnbr_max": ctrl_max, "epsg": epsg,
                    "masking": "SCL 0·1·3·8·9·10·11", "reflectance": "(DN-1000)/10000 (PB≥04.00)", "severity_reference": "Key & Benson (2006)"},
         "metrics": {
-            "burned_forest_ha": metric(burned_ha, "MODEL", "ha", n=int(burn.sum()), note="dNBR>임계 ∧ 산불 전 NDVI>임계인 화소 면적"),
+            "burned_forest_ha": metric(burned_ha, "MODEL", "ha", n=int(burn.sum()), note="dNBR가 임계를 넘고 산불 전 NDVI가 임계를 넘는 화소 면적"),
             "control_ha": metric(int(round(float(ctrl.sum()) * px_ha)), "MODEL", "ha", n=int(ctrl.sum())),
             "recovery_ratio_latest": metric(last_ratio, "MODEL", "비", n=int(burn.sum()), note=f"{latest} 피해지/대조지 NDVI 중앙값 비"),
             "did_effect_ndvi": metric(did["effect"], "MODEL", "NDVI", n=did["n"].get("treat_post"), note=did["reason"] or "이중차분: (피해 후-전)-(대조 후-전)"),
             "ci95_median_diff": metric(list(ci) if ci else None, "MODEL", "NDVI", note="최근 시점 피해지-대조지 중앙값 차이의 부트스트랩 95% CI(seed 42)"),
-            "mde_ndvi": metric(mde, "ASSUMPTION", "NDVI", note="독립 화소 가정의 근사치 — 공간 자기상관 때문에 실제 검출력은 더 낮다"),
+            "mde_ndvi": metric(mde, "ASSUMPTION", "NDVI", note="독립 화소 가정의 근사치이며 실제 검출력은 더 낮다"),
             "valid_pct_min": metric(min(s["valid_pct"] for s in scenes if s.get("valid_pct") is not None), "OBSERVED", "%"),
         },
         "severity": severity, "series": series, "scenes": scenes, "failed": failed,
-        "overlays": {"dnbr": f"/api/projects/{p['id']}/overlay/dnbr.png", "pre": f"/api/projects/{p['id']}/overlay/pre.png", "post": f"/api/projects/{p['id']}/overlay/post.png", "bounds": bbox},
+        "overlays": {"dnbr": f"/api/projects/{p['id']}/overlay/dnbr.png", "pre": f"/api/projects/{p['id']}/overlay/pre.png", "post": f"/api/projects/{p['id']}/overlay/post.png", "bounds": bbox,
+                     "legend": {"dnbr": {"label": "피해등급", "type": "classes", "query": "dnbr", "items": [{"c": "#e9cf9c", "t": "경"}, {"c": "#c48a3e", "t": "중"}, {"c": "#8a5a1e", "t": "중강"}, {"c": "#4a2a12", "t": "강"}], "note": "dNBR 등급, Key & Benson 2006"},
+                                "pre": {"label": "산불 전", "type": "text", "text": f"Sentinel-2 진색 합성 {next((x['date'] for x in scenes if x['label'] == 'pre'), '')}"},
+                                "post": {"label": "진화 직후", "type": "text", "text": f"Sentinel-2 진색 합성 {next((x['date'] for x in scenes if x['label'] == 'post'), '')}"}}},
         "verdict": _verdict(last_ratio, did["effect"], mde, ci),
         "limitations": [
-            "복원 사업 구역(계획복원/자연복원) 자료가 결합되기 전의 예비 분석이다. 구역 자료가 들어오면 처리구를 복원구로, 대조구를 자연복원구로 재정의한다.",
-            "NDVI 회복은 초본·관목 재생도 포함하므로 임목 회복과 다를 수 있다.",
-            "검출가능최소효과는 화소 독립을 가정한 낙관적 근사치다.",
-            "궤도 가장자리·타일 경계 밖은 분석에서 제외했다.",
+            "복원 구역 자료가 결합되기 전의 예비 분석이다. 구역 자료가 들어오면 처리구를 계획복원구로, 대조구를 자연복원구로 다시 정의한다.",
+            "NDVI 회복에는 초본과 관목 재생도 포함되어 임목 회복과 다를 수 있다.",
+            "검출가능최소효과는 화소 독립을 가정한 낙관적 값이다.",
+            "궤도 가장자리와 타일 경계 밖은 분석에서 제외했다.",
         ],
     }
 
@@ -198,8 +203,8 @@ def _verdict(ratio, effect, mde, ci) -> dict:
     below_mde = mde is not None and abs(effect) < mde
     ci_has_zero = ci is not None and ci[0] <= 0 <= ci[1]
     if below_mde or ci_has_zero:
-        return {"code": "recovered", "text": f"최근 시점 회복률 {ratio:.2f}. 피해지와 대조지의 변화 차이({effect:+.3f} NDVI)가 검출 한계 안 — 대조지 수준으로 회복된 것으로 판정(미검출은 효과 없음의 증명이 아님)."}
-    ci_txt = f" (피해지−대조지 95% CI {ci[0]:+.3f}~{ci[1]:+.3f})" if ci else ""
+        return {"code": "recovered", "text": f"최근 회복률 {ratio:.2f}. 피해지와 대조지의 변화 차이 {effect:+.3f} NDVI는 검출 한계 안에 있어 대조지 수준 회복으로 판정한다."}
+    ci_txt = f" 95% 신뢰구간은 {ci[0]:+.3f}~{ci[1]:+.3f}로 0을 포함하지 않는다." if ci else ""
     if effect < 0:
-        return {"code": "gap_remaining", "text": f"최근 시점 회복률 {ratio:.2f}. 피해지는 대조지 대비 {abs(effect):.3f} NDVI만큼 아직 회복되지 못함{ci_txt} — 회복 격차 잔존."}
-    return {"code": "recovered", "text": f"최근 시점 회복률 {ratio:.2f}. 피해지 변화가 대조지를 {effect:+.3f} NDVI 상회{ci_txt} — 회복 완료."}
+        return {"code": "gap_remaining", "text": f"최근 회복률 {ratio:.2f}. 피해지 NDVI가 대조지보다 {abs(effect):.3f} 낮아 회복 격차가 남아 있다.{ci_txt}"}
+    return {"code": "recovered", "text": f"최근 회복률 {ratio:.2f}. 피해지 변화가 대조지를 {effect:+.3f} NDVI 웃돈다.{ci_txt}"}

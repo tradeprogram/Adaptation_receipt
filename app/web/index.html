@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<link rel="stylesheet" href="sheet.css?v=13">
+<link rel="stylesheet" href="sheet.css?v=14">
 <link rel="stylesheet" href="ink.css?v=5">
 <link rel="stylesheet" href="layout.css?v=7">
 <link rel="stylesheet" href="print3d.css?v=6">
@@ -49,7 +49,7 @@
       <img class="brand-mark" src="assets/logo.png" alt="" width="239" height="452">
       <span class="brand-word"><span class="brand-name">적응 영수증</span><span class="brand-tag">ADAPTATION RECEIPT · 기후적응 사업 성과 검증</span></span>
     </a>
-    <h1 class="sheet-title"><span class="k">도엽번호 <span id="sheetId">—</span></span><span id="sheetName" class="v">도엽을 선택하십시오</span></h1>
+    <h1 class="sheet-title"><span class="k">도엽번호 <span id="sheetId">—</span></span><span id="sheetName" class="v">사업을 선택하십시오</span></h1>
     <div class="sheet-scale"><span class="k">축척</span><span id="sheetScale" class="v">1 : —</span></div>
   </header>
 
@@ -72,16 +72,26 @@
       <div class="graticule gr-left" id="grLeft"></div>
       <div class="graticule gr-right" id="grRight"></div>
       <div id="map" class="map"></div>
+      <div id="mapB" class="map map-b" aria-hidden="true" hidden></div>
+      <div class="cmp" id="cmp" hidden>
+        <div class="cmp-handle" id="cmpHandle" role="slider" aria-label="비교 경계" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" tabindex="0"><i></i></div>
+        <span class="cmp-tag cmp-a" id="cmpA"></span><span class="cmp-tag cmp-b" id="cmpB"></span>
+      </div>
       <div class="plate-tools">
         <div class="seg" role="group" aria-label="바탕">
           <button class="seg-btn is-active" data-base="map">지형</button>
           <button class="seg-btn" data-base="sat">영상</button>
         </div>
-        <div class="seg" id="overlaySeg" role="group" aria-label="음영" hidden></div>
-        <label class="opacity" id="opacityWrap" hidden><span class="k">음영</span><input id="opacity" type="range" min="0" max="100" value="85" aria-label="음영 불투명도"></label>
-        <span class="ov-legend" id="ovLegend" hidden></span>
+        <div class="seg" id="overlaySeg" role="group" aria-label="오버레이" hidden></div>
+        <label class="opacity" id="opacityWrap" hidden><span class="k">투명도</span><input id="opacity" type="range" min="0" max="100" value="85" aria-label="오버레이 불투명도"></label>
+        <div class="seg" id="mapActions" hidden>
+          <button class="seg-btn" id="btnCompare" type="button" aria-pressed="false">전후 비교</button>
+          <button class="seg-btn" id="btnExport" type="button">지도 저장</button>
+        </div>
       </div>
-      <div class="scalebar" id="scalebar"><i></i><span class="num" id="scalebarText">—</span></div>
+      <div class="legend" id="legend" hidden></div>
+      <div class="map-loading" id="mapLoading" hidden><span>불러오는 중</span></div>
+      <div class="scalebar" id="scalebar"><i></i><span class="num" id="scalebarText">—</span><span class="num cursor-pos" id="cursorPos"></span></div>
     </section>
 
 
@@ -119,7 +129,7 @@
     </div>
     <div id="cardEmpty" class="note-empty">
       <div class="k">난외주기</div>
-      <p>왼쪽 도엽 색인에서 사업을 고르십시오. 판정 도장, 지표 장부, 회복 단면도, 한계, 조제 매니페스트가 이 난에 기재됩니다.</p>
+      <p>왼쪽 색인에서 사업을 고르면 성과 카드가 출력됩니다.</p>
     </div>
     <div id="card" class="note" hidden>
       <div class="glow" aria-hidden="true"></div>
@@ -142,7 +152,7 @@
       </section>
 
       <section class="ledger" id="chartBlock" hidden>
-        <h2>회복 단면도 <small>피해지·대조지 NDVI 중앙값</small></h2>
+        <h2>회복 단면도 <small>피해지와 대조지의 NDVI 중앙값</small></h2>
         <canvas id="chart" height="170" aria-label="회복 곡선"></canvas>
         <div id="ratioStrip" class="ratios"></div>
       </section>
@@ -153,12 +163,12 @@
       </section>
 
       <section class="ledger" id="eventsBlock" hidden>
-        <h2>호우 사건 관측가능성 <small>A ≤48h · B 48–120h · C &gt;120h</small></h2>
+        <h2>호우 사건 <small>첫 위성 관측까지 A 48시간 이내, B 120시간 이내, C 그 이상</small></h2>
         <table class="tbl" id="eventsTable"></table>
       </section>
 
       <section class="ledger" id="equityBlock">
-        <h2>형평성 감사 <small>수혜 대상 취약도 대 관할</small></h2>
+        <h2>형평성 감사 <small>수혜 건물과 관할 전체의 비교</small></h2>
         <div id="equityBody"></div>
       </section>
 
@@ -180,13 +190,13 @@
   <button class="ai-fab" id="aiFab" type="button" aria-controls="agent" aria-expanded="false" aria-label="적응영수증.chat 열기"><span><b>AI</b><small>.chat</small></span><i class="badge"></i></button>
   <aside class="agent" id="agent" aria-label="적응영수증.chat" hidden>
       <div class="agent-head">
-        <div><strong class="agent-name">적응영수증<span>.chat</span></strong><span class="agent-sub">현재 도엽의 성과 카드를 읽고 근거 수치만 인용합니다</span></div>
+        <div><strong class="agent-name">적응영수증<span>.chat</span></strong><span class="agent-sub">성과 카드의 수치만 인용합니다</span></div>
         <span class="agent-status num" id="agentStatus">대기</span>
         <button class="agent-close" id="agentClose" type="button" aria-label="닫기">×</button>
       </div>
       <div class="agent-body" id="agentBody"></div>
       <form class="agent-form" id="agentForm">
-        <textarea id="agentInput" class="agent-input" rows="2" placeholder="예: 이 사업의 효과가 검출되었나요? 보고서 문장으로 정리해줘" aria-label="질문"></textarea>
+        <textarea id="agentInput" class="agent-input" rows="2" placeholder="예: 효과가 검출되었나요?" aria-label="질문"></textarea>
         <div class="agent-row">
           <div class="agent-quick" id="agentQuick"></div>
           <button class="act act-primary" type="submit" id="agentSend" aria-label="질문 보내기"><svg><use href="#i-send"/></svg><span>질문</span></button>
@@ -213,16 +223,16 @@
   <section id="viewCalendar" class="sheet-body alt" hidden>
     <div class="alt-inner">
       <h2 class="alt-title">법정 적응 거버넌스 달력</h2>
-      <p class="lead">결제 시점은 법정 보고 일정에 고정된다. 위성 관측은 5~10월에 축적되고 1~3월에 분석·납품된다.</p>
+      <p class="lead">위성 관측은 5월부터 10월까지 쌓이고, 분석과 납품은 1월부터 3월, 이행점검 제출은 4월 30일이다.</p>
       <table class="tbl" id="calendarTable"></table>
     </div>
   </section>
   <section id="viewKeys" class="sheet-body alt" hidden>
     <div class="alt-inner">
       <h2 class="alt-title">외부 연동 상태</h2>
-      <p class="lead">위성 자료는 키 없이 동작한다. 아래 키는 형평성 감사·설명·보조 자료에 쓰이며, 비어 있으면 해당 난은 "키 필요"로 기재되고 가상값으로 채우지 않는다.</p>
+      <p class="lead">위성 자료는 키 없이 동작한다. 아래 키는 형평성 감사와 설명 대화에 쓰이며, 비어 있으면 해당 항목은 키 필요로 표시된다.</p>
       <table class="tbl" id="keysTable"></table>
-      <p class="meta">값은 <code>app/.env</code>에 넣는다(<code>.env.example</code> 참고). 서버 재시작 후 반영.</p>
+      <p class="meta">키는 <code>app/.env</code>에 넣고 서버를 다시 시작한다.</p>
     </div>
   </section>
 </div>
@@ -231,7 +241,7 @@
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="dashboard.js?v=10"></script>
-<script src="chat.js?v=3"></script>
+<script src="dashboard.js?v=11"></script>
+<script src="chat.js?v=4"></script>
 </body>
 </html>
