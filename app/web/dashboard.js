@@ -27,8 +27,23 @@
 
   // ---------- 지면(지도) ----------
   const STYLE = "https://tiles.openfreemap.org/styles/liberty";
-  const map = new maplibregl.Map({ container: "map", style: STYLE, center: [127.8, 36.4], zoom: 6.3, attributionControl: { compact: true }, preserveDrawingBuffer: true });
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), "top-right");
+  const map = new maplibregl.Map({ container: "map", style: STYLE, center: [127.8, 36.4], zoom: 6.3, maxPitch: 70, attributionControl: { compact: true }, preserveDrawingBuffer: true });
+  map.addControl(new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }), "top-right");
+  // 3D 지형: AWS 공개 지형 타일(terrarium, 키 불필요). 같은 버킷의 주소 셋으로 나눠 동시 요청 수를 늘린다
+  const TERRAIN = { type: "raster-dem", tiles: ["https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png", "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png", "https://elevation-tiles-prod.s3.us-east-1.amazonaws.com/terrarium/{z}/{x}/{y}.png"], tileSize: 256, encoding: "terrarium", maxzoom: 15, attribution: "Terrain: Mapzen, AWS" };
+  const EXAGG = 1.2, PITCH3D = 52, BEARING3D = -18;
+  const is3D = () => $("#btn3d").getAttribute("aria-pressed") === "true";
+  // 종이 세계관의 하늘: 회청색 하늘, 종이빛 지평선과 안개, 오후의 낮은 햇빛(건물 옆면에 음영)
+  const dressMap = (m, buildings = true) => {
+    if (!m.getSource("terrain")) m.addSource("terrain", TERRAIN);
+    if (!m.getSource("terrain-hs")) m.addSource("terrain-hs", TERRAIN);   // 음영기복은 별도 소스(같은 소스를 쓰면 품질 경고)
+    if (!m.getLayer("hills")) m.addLayer({ id: "hills", type: "hillshade", source: "terrain-hs", paint: { "hillshade-exaggeration": 0.55, "hillshade-shadow-color": "#3b2f22", "hillshade-highlight-color": "#fffaf0", "hillshade-accent-color": "#5a4a3a" } }, m.getLayer("aoi-fill") ? "aoi-fill" : firstSymbolLayer(m));
+    if (buildings && !m.getLayer("bld-3d") && m.getSource("openmaptiles")) m.addLayer({ id: "bld-3d", type: "fill-extrusion", source: "openmaptiles", "source-layer": "building", minzoom: 13, paint: { "fill-extrusion-color": "#efe9dc", "fill-extrusion-height": ["coalesce", ["get", "render_height"], 6], "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0], "fill-extrusion-opacity": 0.92 } }, firstSymbolLayer(m));
+    m.setSky({ "sky-color": "#8fa9c7", "horizon-color": "#e9e3d5", "fog-color": "#efe9dc", "fog-ground-blend": 0.55, "horizon-fog-blend": 0.7, "sky-horizon-blend": 0.6, "atmosphere-blend": 0.5 });
+    m.setLight({ anchor: "viewport", color: "#fff4e0", intensity: 0.45, position: [1.15, 210, 40] });
+  };
+  const apply3D = (m, on) => { m.setTerrain(on ? { source: "terrain", exaggeration: EXAGG } : null); for (const id of ["hills", "bld-3d", "tc-3d"]) if (m.getLayer(id)) m.setLayoutProperty(id, "visibility", on ? "visible" : "none"); };
+  const camOpts = () => (is3D() ? { pitch: PITCH3D, bearing: BEARING3D } : { pitch: 0, bearing: 0 });
   const SAT = { type: "raster", tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"], tileSize: 256, attribution: "Esri World Imagery" };
   const firstSymbolLayer = (m) => (m.getStyle().layers.find((l) => l.type === "symbol") || {}).id;
   const bboxPoly = (b) => ({ type: "Polygon", coordinates: [[[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]], [b[0], b[1]]]] });
@@ -42,7 +57,7 @@
   map.on("load", () => {
     koreanize(map);
     map.addSource("sat", SAT);
-    map.addLayer({ id: "sat", type: "raster", source: "sat", layout: { visibility: "none" } }, firstSymbolLayer(map));
+    map.addLayer({ id: "sat", type: "raster", source: "sat", layout: { visibility: document.querySelector("[data-base].is-active")?.dataset.base === "sat" ? "visible" : "none" } }, firstSymbolLayer(map));
     map.addSource("aois", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
     map.addLayer({ id: "aoi-fill", type: "fill", source: "aois", paint: { "fill-color": "#141414", "fill-opacity": 0.04 } });
     map.addLayer({ id: "aoi-line", type: "line", source: "aois", paint: { "line-color": "#141414", "line-width": 1, "line-dasharray": [4, 3] } });
@@ -52,6 +67,9 @@
     map.addLayer({ id: "tc-fill", type: "fill", source: "tc", paint: { "fill-color": ["match", ["get", "role"], "treated", "#8a5a1e", "#2f7d4f"], "fill-opacity": 0.18 } });
     map.addLayer({ id: "tc-line-t", type: "line", source: "tc", filter: ["==", ["get", "role"], "treated"], paint: { "line-color": "#8a5a1e", "line-width": 2.2 } });
     map.addLayer({ id: "tc-line-c", type: "line", source: "tc", filter: ["==", ["get", "role"], "control"], paint: { "line-color": "#2f7d4f", "line-width": 1.6, "line-dasharray": [3, 2] } });
+    // 시공·대조 동을 층수 곱하기 3 m로 세워 올린다(건축물대장 층수)
+    map.addLayer({ id: "tc-3d", type: "fill-extrusion", source: "tc", paint: { "fill-extrusion-color": ["match", ["get", "role"], "treated", "#8a5a1e", "#2f7d4f"], "fill-extrusion-height": ["*", ["coalesce", ["get", "floors"], 4], 3], "fill-extrusion-opacity": 0.82 } });
+    dressMap(map); apply3D(map, is3D());
     map.addSource("pts", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
     map.addLayer({ id: "pts-halo", type: "circle", source: "pts", paint: { "circle-radius": ["match", ["get", "kind"], "station", 9, 7], "circle-color": "#fbfaf6", "circle-opacity": 0.9 } });
     map.addLayer({ id: "pts", type: "circle", source: "pts", paint: { "circle-radius": ["match", ["get", "kind"], "station", 5, 4.2], "circle-color": ["match", ["get", "kind"], "station", "#141414", "#1f5aa0"], "circle-stroke-color": "#fbfaf6", "circle-stroke-width": 1.2 } });
@@ -75,7 +93,7 @@
   map.on("moveend", updateMarginalia); map.on("resize", updateMarginalia);
   // 지면 크기가 바뀌면(글꼴·채팅 로드로 격자 재배치) 현재 도엽 범위로 다시 맞춘다
   let fitTimer = null;
-  new ResizeObserver(() => { if (!state.focusBbox) return; clearTimeout(fitTimer); fitTimer = setTimeout(() => { map.resize(); if (mapB) mapB.resize(); const b = state.focusBbox; map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, duration: 300 }); }, 120); }).observe(document.querySelector(".plate"));
+  new ResizeObserver(() => { if (!state.focusBbox) return; clearTimeout(fitTimer); fitTimer = setTimeout(() => { map.resize(); if (mapB) mapB.resize(); const b = state.focusBbox; map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, duration: 300, bearing: map.getBearing(), pitch: map.getPitch() }); }, 120); }).observe(document.querySelector(".plate"));
   function drawAois() {
     const src = map.getSource("aois"); if (!src) return;
     src.setData({ type: "FeatureCollection", features: state.projects.map((p) => ({ type: "Feature", properties: { id: p.id, name: p.name }, geometry: bboxPoly(p.bbox) })) });
@@ -97,8 +115,8 @@
   function drawExtras(p, card) {
     if (!map.getSource("tc")) { map.once("load", () => drawExtras(p, card)); return; }
     const g = card?.project?.geometry || {}; const feats = [];
-    (g.treated || []).forEach((f) => feats.push({ type: "Feature", properties: { role: "treated" }, geometry: f.geometry || f }));
-    (g.control || []).forEach((f) => feats.push({ type: "Feature", properties: { role: "control" }, geometry: f.geometry || f }));
+    (g.treated || []).forEach((f) => feats.push({ type: "Feature", properties: { role: "treated", floors: f.properties?.floors }, geometry: f.geometry || f }));
+    (g.control || []).forEach((f) => feats.push({ type: "Feature", properties: { role: "control", floors: f.properties?.floors }, geometry: f.geometry || f }));
     map.getSource("tc").setData({ type: "FeatureCollection", features: feats });
     const mod = card?.modules?.[0] || {}; const pts = [];
     (mod.shelters || []).forEach((s) => pts.push({ type: "Feature", properties: { kind: "shelter", html: `<b>${s.name}</b><span class="sub">${s.addr || ""}</span>무더위쉼터, 이용 가능 ${s.capacity ?? "—"}명` }, geometry: { type: "Point", coordinates: [s.lon, s.lat] } }));
@@ -147,6 +165,11 @@
     map.setLayoutProperty("sat", "visibility", b.dataset.base === "sat" ? "visible" : "none");
     if (mapB && mapB.getLayer("sat")) mapB.setLayoutProperty("sat", "visibility", b.dataset.base === "sat" ? "visible" : "none");
   }));
+  $("#btn3d").addEventListener("click", () => {
+    const on = !is3D(); $("#btn3d").setAttribute("aria-pressed", String(on));
+    apply3D(map, on); if (mapB && mapB.getSource("terrain")) apply3D(mapB, on);
+    map.easeTo({ ...camOpts(), duration: 900 });
+  });
   $("#opacity").addEventListener("input", (e) => { const o = +e.target.value / 100; if (map.getLayer("overlay")) map.setPaintProperty("overlay", "raster-opacity", o); if (mapB && mapB.getLayer("overlayB")) mapB.setPaintProperty("overlayB", "raster-opacity", o); });
 
   // 클릭 지점의 값: 서버의 격자(layers.npz)에서 읽는다
@@ -173,10 +196,10 @@
     const o = +$("#opacity").value / 100; const b = mod.overlays.bounds;
     const place = () => { addOverlayTo(mapB, "overlayB", mod.overlays[pr[1]] + "?t=" + Date.now(), b, o); mapB.resize(); };
     if (!mapB) {
-      mapB = new maplibregl.Map({ container: "mapB", style: STYLE, center: map.getCenter(), zoom: map.getZoom(), interactive: false, attributionControl: false, preserveDrawingBuffer: true });
-      mapB.on("load", () => { koreanize(mapB); mapB.addSource("sat", SAT); mapB.addLayer({ id: "sat", type: "raster", source: "sat", layout: { visibility: map.getLayoutProperty("sat", "visibility") || "none" } }, firstSymbolLayer(mapB)); place(); });
+      mapB = new maplibregl.Map({ container: "mapB", style: STYLE, center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), maxPitch: 70, interactive: false, attributionControl: false, preserveDrawingBuffer: true });
+      mapB.on("load", () => { koreanize(mapB); mapB.addSource("sat", SAT); mapB.addLayer({ id: "sat", type: "raster", source: "sat", layout: { visibility: map.getLayoutProperty("sat", "visibility") || "none" } }, firstSymbolLayer(mapB)); dressMap(mapB); apply3D(mapB, is3D()); place(); });
       map.on("move", () => { if (mapB) mapB.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() }); });
-    } else { mapB.jumpTo({ center: map.getCenter(), zoom: map.getZoom() }); if (mapB.isStyleLoaded()) place(); else mapB.once("load", place); }
+    } else { mapB.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() }); if (mapB.isStyleLoaded()) place(); else mapB.once("load", place); }
     if (map.getLayer("overlay")) { map.removeLayer("overlay"); map.removeSource("overlay"); }
     addOverlayTo(map, "overlay", mod.overlays[pr[0]] + "?t=" + Date.now(), b, o);
     state.overlay = pr[0]; document.querySelectorAll("#overlaySeg [data-ov]").forEach((x) => x.classList.toggle("is-active", x.dataset.ov === pr[0]));
@@ -237,7 +260,7 @@
     state.current = id;
     document.querySelectorAll(".index-tile").forEach((b) => b.classList.toggle("is-active", b.dataset.id === id));
     const p = state.projects.find((x) => x.id === id);
-    const focus = () => { map.resize(); map.setFilter("aoi-active", ["==", ["get", "id"], id]); map.fitBounds([[p.bbox[0], p.bbox[1]], [p.bbox[2], p.bbox[3]]], { padding: 40, duration: 600 }); };
+    const focus = () => { map.resize(); map.setFilter("aoi-active", ["==", ["get", "id"], id]); map.fitBounds([[p.bbox[0], p.bbox[1]], [p.bbox[2], p.bbox[3]]], { padding: 40, duration: 1600, essential: true, ...camOpts() }); };
     if (p) { state.focusBbox = p.bbox; if (map.getLayer("aoi-active")) focus(); else map.once("load", focus); }
     if (state.compare) disableCompare(false);
     setLoading(true); $("#cardEmpty").hidden = false; $("#cardEmpty p").textContent = "성과 카드를 불러오는 중"; $("#card").hidden = true;
@@ -381,7 +404,7 @@
   }
 
   // ---------- 채팅(chat.js)에 노출하는 화면 상태 ----------
-  window.AR = { getState: () => ({ current: state.current, card: state.card, overlay: state.overlay }), selectProject, setOverlay, map };
+  window.AR = { getState: () => ({ current: state.current, card: state.card, overlay: state.overlay }), selectProject, setOverlay, map, get mapB() { return mapB; } };
 
   // ---------- 달력·키 ----------
   async function loadCalendar() {

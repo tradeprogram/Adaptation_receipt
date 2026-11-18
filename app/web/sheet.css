@@ -74,12 +74,12 @@ code{font-family:var(--font-marg);font-size:1em;background:var(--paper-2);paddin
 .graticule span{position:relative;line-height:1}
 .gr-top span::after,.gr-bottom span::before{content:"";position:absolute;left:50%;width:1px;height:4px;background:var(--rule)}
 .gr-top span::after{top:100%} .gr-bottom span::before{bottom:100%}
-.plate-tools{position:absolute;top:24px;left:24px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;z-index:5}
-.seg{display:flex;background:var(--paper);border:1px solid var(--rule);padding:2px}
+.plate-tools{position:absolute;top:24px;left:24px;display:flex;gap:0;align-items:stretch;flex-wrap:wrap;z-index:5;filter:drop-shadow(0 1px 0 rgba(20,20,20,.08))}
+.seg{display:flex;background:rgba(251,250,246,.96);border:1px solid var(--ink);padding:2px;height:30px;box-sizing:border-box} .seg+.seg,.seg+.opacity,.opacity+.seg{margin-left:-1px}
 .seg-btn{border:0;background:transparent;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--ink-2);transition:background 140ms var(--ease),transform 120ms var(--ease)}
 .seg-btn:hover{background:var(--paper-2)} .seg-btn:active{transform:scale(.97)}
 .seg-btn.is-active{background:var(--ink);color:var(--paper)}
-.opacity{display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--rule);padding:3px 10px}
+.opacity{display:flex;align-items:center;gap:8px;background:rgba(251,250,246,.96);border:1px solid var(--ink);padding:0 10px;height:30px;box-sizing:border-box}
 .opacity input{width:100px;accent-color:var(--contour)}
 .scalebar{position:absolute;left:24px;bottom:26px;display:flex;align-items:center;gap:8px;z-index:5;background:rgba(251,250,246,.9);padding:3px 8px 3px 6px}
 .scalebar i{display:block;height:6px;width:var(--w,100px);border:1px solid var(--ink);border-top:0;background:linear-gradient(90deg,var(--ink) 0 50%,transparent 50%) left top/100% 3px no-repeat}
@@ -234,3 +234,11 @@ code{font-family:var(--font-marg);font-size:1em;background:var(--paper-2);paddin
 .rcpt .val{min-width:0;max-width:62%}
 .rcpt .val .obj{display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-size:12px;white-space:nowrap}
 .rcpt .val .obj em{font-style:normal;color:var(--ink-3);margin-right:6px;font-family:var(--font-ui);font-size:11px}
+
+/* 3D 지면(2026-11-18): 세그먼트 띠 하나로 묶고, 3D 버튼은 인장색, 나침반 컨트롤은 종이 톤 */
+.seg-3d{font-family:var(--font-marg);font-weight:700;letter-spacing:.08em;border-left:1px solid var(--rule)!important;margin-left:2px;padding-left:12px;padding-right:12px}
+.seg-3d[aria-pressed="true"]{background:var(--seal);color:var(--paper)}
+.maplibregl-ctrl-top-right{top:60px;right:24px}
+.maplibregl-ctrl-group button.maplibregl-ctrl-compass .maplibregl-ctrl-icon{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 29 29'><path d='M10.5 14l4-8 4 8h-8z' fill='%23a02c1e'/><path d='M10.5 16l4 8 4-8h-8z' fill='%23141414' opacity='.55'/></svg>")}
+.legend{background:rgba(251,250,246,.96);border-color:var(--ink)}
+.plate .maplibregl-canvas{outline:none}
