@@ -2,7 +2,7 @@
  "status": "ok",
  "module": "flood",
  "project_id": "flood-buyeo-drainage",
- "computed_at": "2026-11-18T18:31:47",
+ "computed_at": "2026-11-18T20:34:51",
  "design": {
   "collection": "sentinel-1-grd",
   "grades": {
@@ -122,7 +122,7 @@
       "t": "상시 수역"
      }
     ],
-    "note": "정비 전 호우 사건의 합집합. VV -16 dB 미만이고 기준선보다 3 dB 이상 낮은 화소"
+    "note": "정비 전 호우 사건의 합집합. 위성 레이더(Sentinel-1)가 잔잔한 물로 판독한 화소"
    },
    "flood_after": {
     "label": "정비 후 침수",
@@ -138,7 +138,7 @@
       "t": "상시 수역"
      }
     ],
-    "note": "정비 후 호우 사건의 합집합. VV -16 dB 미만이고 기준선보다 3 dB 이상 낮은 화소"
+    "note": "정비 후 호우 사건의 합집합. 위성 레이더(Sentinel-1)가 잔잔한 물로 판독한 화소"
    },
    "flood_change": {
     "label": "전후 비교",

@@ -4,21 +4,22 @@
   const api = async (path, opt) => { const r = await fetch(path, opt); if (!r.ok) throw new Error(`${r.status} ${path}`); return r.json(); };
   const TYPE_LABEL = { fire: "산불 피해지 복원", heat: "옥상 차열(열 저감)", flood: "배수 정비(침수 방재)" };
   const TYPE_CODE = { fire: "FIRE", heat: "HEAT", flood: "FLOOD" };
-  const VERDICT = { detected: "효과 검출", recovered: "대조지 수준 회복", gap_remaining: "회복 격차 잔존", reduced: "침수 범위 감소", not_reduced: "침수 범위 미감소", undetected: "미검출", unmeasured: "측정 불가", ready: "2단계 실행 가능", waiting: "대기", waiting_input: "입력 대기", not_run: "미실행", failed: "실패", partial: "부분 완료", ok: "완료", done: "완료", queued: "대기", running: "진행" };
+  // 화면에는 쉬운 말만 적는다. 기술 용어(이중차분, dNBR 등)는 '자세한 수치와 근거'와 JSON에 남긴다
+  const VERDICT = { detected: "효과 확인", recovered: "주변 수준으로 회복", gap_remaining: "아직 덜 회복", reduced: "침수 줄어듦", not_reduced: "침수 줄지 않음", undetected: "효과 확인 안 됨", unmeasured: "자료 부족", ready: "비교 가능", waiting: "자료 기다리는 중", waiting_input: "입력 필요", not_run: "검정 전", failed: "실패", partial: "부분 완료", ok: "완료", done: "완료", queued: "대기", running: "진행" };
   const SRC = { OBSERVED: "실측", MODEL: "계산", RULE: "규칙", ASSUMPTION: "가정", FORECAST: "예보" };
   const OV_LABEL = { dnbr: "피해등급", pre: "산불 전", post: "진화 직후", lst_before: "시공 전 온도", lst_after: "시공 후 온도", lst_diff: "전후 차이", flood_before: "정비 전 침수", flood_after: "정비 후 침수", flood_change: "전후 비교", none: "없음" };
   const PAIRS = [["pre", "post", "산불 전", "진화 직후"], ["lst_before", "lst_after", "시공 전", "시공 후"], ["flood_before", "flood_after", "정비 전", "정비 후"]];
   const SEV_COLORS = ["#f7e26b", "#f29e2e", "#d7301f", "#7a0177"];
   // 지표 장부의 항목 이름. 키는 JSON(재현용)에 남고 화면에는 한글만 적는다
   const KEY_LABEL = {
-    burned_forest_ha: "피해 산림 면적", control_ha: "대조지 면적", recovery_ratio_latest: "최근 회복률", did_effect_ndvi: "이중차분 효과(NDVI)", ci95_median_diff: "95% 신뢰구간", mde_ndvi: "검출가능최소효과(NDVI)", valid_pct_min: "유효 화소 비율(최소)",
-    did_effect_lst_c: "이중차분 효과(℃)", medians: "집단별 중앙값(℃)", ci95: "95% 신뢰구간", mde_c: "검출가능최소효과(℃)", scenes_used: "사용한 장면 수", treated_area_ha: "시공 면적", area_for_mde_1c_ha: "1℃ 검출에 필요한 면적", area_for_mde_05c_ha: "0.5℃ 검출에 필요한 면적", shelters_in_aoi: "범위 안 무더위쉼터", shelter_capacity_in_aoi: "쉼터 수용 인원",
-    events_total: "호우 사건 수", grade_counts: "관측 등급별 사건 수", stage2_ready: "침수 범위 비교 가능", flooded_ha_before: "정비 전 침수 면적", flooded_ha_after: "정비 후 침수 면적", flooded_change_ha: "침수 면적 변화", flooded_change_pct: "침수 면적 변화율", flooded_ha_per_mm_before: "정비 전 강우량당 침수", flooded_ha_per_mm_after: "정비 후 강우량당 침수", flooded_change_pct_rain_adjusted: "강우 보정 변화율",
-    old_building_share: "노후 건물 비율", median_building_age: "건물 연령 중앙값", households_total: "세대 수", jurisdiction_oldage_support: "관할 노년부양비", jurisdiction_aging_index: "관할 고령화지수",
+    burned_forest_ha: "피해 산림 면적", control_ha: "비교 구역(주변 숲) 면적", recovery_ratio_latest: "회복률(피해지 ÷ 주변 숲)", did_effect_ndvi: "주변 숲 대비 변화(식생지수)", ci95_median_diff: "오차 범위(95%)", mde_ndvi: "알아볼 수 있는 최소 변화(식생지수)", valid_pct_min: "구름 없는 화소 비율(최소)",
+    did_effect_lst_c: "비교 동 대비 온도 변화", medians: "구역별 낮 지표면 온도", ci95: "오차 범위(95%)", mde_c: "알아볼 수 있는 최소 온도 변화", scenes_used: "사용한 위성 사진 수", treated_area_ha: "시공 면적", area_for_mde_1c_ha: "1℃ 변화를 알아보려면 필요한 면적", area_for_mde_05c_ha: "0.5℃ 변화를 알아보려면 필요한 면적", shelters_in_aoi: "구역 안 무더위쉼터", shelter_capacity_in_aoi: "쉼터 수용 인원",
+    events_total: "호우 횟수", grade_counts: "위성이 제때 찍은 횟수(등급별)", stage2_ready: "정비 전후 비교 가능", flooded_ha_before: "정비 전 침수 면적", flooded_ha_after: "정비 후 침수 면적", flooded_change_ha: "침수 면적 변화", flooded_change_pct: "침수 면적 변화율", flooded_ha_per_mm_before: "정비 전 비 1 mm당 침수", flooded_ha_per_mm_after: "정비 후 비 1 mm당 침수", flooded_change_pct_rain_adjusted: "비의 세기를 감안한 변화율",
+    old_building_share: "30년 넘은 건물 비율", median_building_age: "건물 나이(중간값)", households_total: "세대 수", jurisdiction_oldage_support: "관할 노년부양비", jurisdiction_aging_index: "관할 고령화지수",
   };
   const SUB_LABEL = { treat_pre: "시공 전", treat_post: "시공 후", ctrl_pre: "대조 전", ctrl_post: "대조 후", A: "A등급", B: "B등급", C: "C등급" };
-  const label = (k) => KEY_LABEL[k] || k;
-  const state = { projects: [], current: null, card: null, overlay: "dnbr", chart: null, poll: null, compare: false, loading: 0 };
+  const label = (k, row) => row?.label || KEY_LABEL[k] || k;
+  const state = { projects: [], current: null, card: null, cards: {}, overlay: "dnbr", chart: null, poll: null, compare: false, loading: 0, reg: null };
   const legendOf = (mod, key) => { const L = mod?.overlays?.legend?.[key]; return typeof L === "string" ? { label: OV_LABEL[key] || key, type: "text", text: L } : L; };
   const ovLabel = (mod, key) => legendOf(mod, key)?.label || OV_LABEL[key] || key;
   const ovKeys = (mod) => Object.keys(mod?.overlays || {}).filter((k) => !["bounds", "legend"].includes(k));
@@ -76,6 +77,8 @@
     map.addLayer({ id: "pts-halo", type: "circle", source: "pts", paint: { "circle-radius": ["match", ["get", "kind"], "station", 9, 7], "circle-color": "#fbfaf6", "circle-opacity": 0.9 } });
     map.addLayer({ id: "pts", type: "circle", source: "pts", paint: { "circle-radius": ["match", ["get", "kind"], "station", 5, 4.2], "circle-color": ["match", ["get", "kind"], "station", "#141414", "#1f5aa0"], "circle-stroke-color": "#fbfaf6", "circle-stroke-width": 1.2 } });
     map.on("click", (e) => {
+      if (state.reg?.pick) { pickBuilding(e); return; }
+      if (state.reg?.drawing) return;
       const hit = map.queryRenderedFeatures(e.point, { layers: ["pts", "aoi-fill"] });
       const pt = hit.find((f) => f.layer.id === "pts");
       if (pt) { popup.setLngLat(pt.geometry.coordinates).setHTML(pt.properties.html).addTo(map); return; }
@@ -95,7 +98,14 @@
   map.on("moveend", updateMarginalia); map.on("resize", updateMarginalia);
   // 지면 크기가 바뀌면(글꼴·채팅 로드로 격자 재배치) 현재 도엽 범위로 다시 맞춘다
   let fitTimer = null;
-  new ResizeObserver(() => { if (!state.focusBbox) return; clearTimeout(fitTimer); fitTimer = setTimeout(() => { map.resize(); if (mapB) mapB.resize(); const b = state.focusBbox; map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, duration: 300, bearing: map.getBearing(), pitch: map.getPitch() }); }, 120); }).observe(document.querySelector(".plate"));
+  new ResizeObserver(() => { if (!state.focusBbox) return; clearTimeout(fitTimer); fitTimer = setTimeout(() => { map.resize(); if (mapB) mapB.resize(); const b = state.focusBbox; flyToBbox(b, 300); }, 120); }).observe(document.querySelector(".plate"));
+  // 사업 범위가 화면을 채우도록 맞춘다. 도구막대(위)와 타임라인·범례(아래) 자리만 비우고, 기울인 카메라는 범위가 사다리꼴로 느슨하게 잡히므로 한 단계 더 당긴다
+  function flyToBbox(b, duration) {
+    const cam = map.cameraForBounds([[b[0], b[1]], [b[2], b[3]]], { padding: { top: 64, bottom: 96, left: 28, right: 28 }, ...camOpts() });
+    if (!cam) return;
+    if (is3D()) cam.zoom += 0.5;
+    map.easeTo({ ...cam, ...camOpts(), duration, essential: true });
+  }
   function drawAois() {
     const src = map.getSource("aois"); if (!src) return;
     src.setData({ type: "FeatureCollection", features: state.projects.map((p) => ({ type: "Feature", properties: { id: p.id, name: p.name }, geometry: bboxPoly(p.bbox) })) });
@@ -195,7 +205,7 @@
   $("#btn3d").addEventListener("click", () => {
     const on = !is3D(); $("#btn3d").setAttribute("aria-pressed", String(on));
     apply3D(map, on); if (mapB && mapB.getSource("terrain")) apply3D(mapB, on);
-    map.easeTo({ ...camOpts(), duration: 900 });
+    if (state.focusBbox) flyToBbox(state.focusBbox, 900); else map.easeTo({ ...camOpts(), duration: 900 });
   });
   $("#opacity").addEventListener("input", (e) => { const o = +e.target.value / 100; if (map.getLayer("overlay")) map.setPaintProperty("overlay", "raster-opacity", o); if (mapB && mapB.getLayer("overlayB")) mapB.setPaintProperty("overlayB", "raster-opacity", o); });
 
@@ -300,7 +310,7 @@
     state.current = id;
     document.querySelectorAll(".index-tile").forEach((b) => b.classList.toggle("is-active", b.dataset.id === id));
     const p = state.projects.find((x) => x.id === id);
-    const focus = () => { map.resize(); map.setFilter("aoi-active", ["==", ["get", "id"], id]); map.fitBounds([[p.bbox[0], p.bbox[1]], [p.bbox[2], p.bbox[3]]], { padding: 40, duration: 1600, essential: true, ...camOpts() }); };
+    const focus = () => { map.resize(); map.setFilter("aoi-active", ["==", ["get", "id"], id]); flyToBbox(p.bbox, 1400); };
     if (p) { state.focusBbox = p.bbox; if (map.getLayer("aoi-active")) focus(); else map.once("load", focus); }
     if (state.compare) disableCompare(false);
     setLoading(true); $("#cardEmpty").hidden = false; $("#cardEmpty p").textContent = "성과 카드를 불러오는 중"; $("#card").hidden = true;
@@ -316,7 +326,7 @@
   const fmt = (v, unit) => v == null ? `<span class="none">측정 불가</span>` : Array.isArray(v) ? `${v[0].toFixed(3)} ~ ${v[1].toFixed(3)}${unit ? " " + unit : ""}` : typeof v === "object" ? `<span class="obj">${Object.entries(v).map(([k, x]) => `<span><em>${SUB_LABEL[k] || k}</em>${typeof x === "number" ? (Number.isInteger(x) ? x : x.toFixed(2)) : x}${unit && typeof x === "number" && !Number.isInteger(x) ? unit : ""}</span>`).join("")}</span>` : typeof v === "boolean" ? (v ? "예" : "아니오") : typeof v === "number" ? (Number.isInteger(v) ? v.toLocaleString("ko-KR") : (Math.abs(v) < 10 ? v.toFixed(3) : v.toFixed(1))) + (unit ? ` ${unit}` : "") : String(v);
   function renderCard() {
     const c = state.card; const p = c.project; const mod = c.modules[0];
-    $("#cardEmpty").hidden = true; $("#card").hidden = false;
+    $("#cardEmpty").hidden = true; $("#card").hidden = false; $("#regPanel").hidden = true;
     printReceipt(p, mod);
     $("#sheetId").textContent = p.id.toUpperCase(); $("#sheetName").textContent = p.name;
     $("#cardMeta").textContent = [TYPE_LABEL[p.type], p.agency, p.region, p.period, p.budget_krw ? `${(p.budget_krw / 1e8).toLocaleString("ko-KR", { maximumFractionDigits: 1 })}억 원` : null].filter(Boolean).join(" · ");
@@ -326,10 +336,11 @@
     $("#stampWord").textContent = VERDICT[code] || code; $("#stampDate").textContent = mod.computed_at ? mod.computed_at.slice(0, 10).replaceAll("-", ".") + " 검정" : "검정 전";
     st.classList.remove("press"); void st.offsetWidth; st.classList.add("press");
     $("#verdictText").textContent = v.text || "";
+    renderSummary(mod);
     $("#needs").hidden = !mod.needs; if (mod.needs) $("#needs").textContent = "필요한 입력: " + mod.needs.join(", ");
     $("#metricsBlock").hidden = !mod.metrics.length;
     // 영수증 행: 항목 ······ 값 / n / 출처
-    $("#metricsTable").outerHTML = `<div class="rcpt" id="metricsTable">` + mod.metrics.map((r) => `<div class="row"><span class="lbl">${label(r.key)}${r.note ? `<span class="sub">${r.note}</span>` : ""}</span><span class="lead"></span><span class="val">${fmt(r.value, r.unit)}${r.n != null ? `<span class="n">n ${r.n.toLocaleString("ko-KR")}</span>` : ""}<span class="src ${r.badge}">${SRC[r.badge]}</span></span></div>`).join("") + `</div>`;
+    $("#metricsTable").outerHTML = `<div class="rcpt" id="metricsTable">` + mod.metrics.map((r) => `<div class="row"><span class="lbl">${label(r.key, r)}<span class="tech">${r.key}</span>${r.note ? `<span class="sub">${r.note}</span>` : ""}</span><span class="lead"></span><span class="val">${fmt(r.value, r.unit)}${r.n != null ? `<span class="n">n ${r.n.toLocaleString("ko-KR")}</span>` : ""}<span class="src ${r.badge}">${SRC[r.badge]}</span></span></div>`).join("") + `</div>`;
     $("#chartBlock").hidden = !mod.series; if (mod.series) renderChart(mod.series);
     $("#severityBlock").hidden = !mod.severity; if (mod.severity) renderSeverity(mod.severity);
     $("#eventsBlock").hidden = !mod.events;
@@ -357,7 +368,7 @@
     renderPassRail(sc, mod);
     syncOverlayUI(mod);
     $("#btnVerify").disabled = false; $("#btnVerify").querySelector("span").textContent = mod.status === "not_run" ? "검정 실행" : "다시 검정";
-    $("#colophonRight").textContent = `조제 ${(mod.computed_at || c.generated_at).slice(0, 10)}${mod.design?.orbit ? ", 궤도 " + mod.design.orbit : ""}${mod.design?.resolution_m ? ", " + mod.design.resolution_m + " m" : ""}`;
+    $("#colophonRight").textContent = `작성 ${(mod.computed_at || c.generated_at).slice(0, 10)}${mod.design?.orbit ? ", 궤도 " + mod.design.orbit : ""}${mod.design?.resolution_m ? ", " + mod.design.resolution_m + " m" : ""}`;
     window.dispatchEvent(new CustomEvent("ar:project-selected", { detail: { id: p.id } }));
   }
   // 3D 출력: 프린터 헤드에서 카드가 뽑혀 나온다. 같은 도엽을 다시 그릴 때마다 새로 출력한다.
@@ -425,7 +436,7 @@
     const res = await fetch(`/api/projects/${state.current}/verify/${mod}`, { method: "POST" });
     const r = await res.json().catch(() => ({}));
     if (!res.ok || !r.data) { toast(r.warnings?.[0] || `재검정을 시작하지 못했습니다 (${res.status})`); return; }
-    toast(r.warnings?.[0] || "검정을 시작했습니다. 장면 수에 따라 몇 분 걸립니다."); watchJob(r.data.id);
+    toast(r.warnings?.[0] || "검정을 시작했습니다. 위성 사진 수에 따라 몇 분 걸립니다."); watchJob(r.data.id);
   });
   function watchJob(jobId) {
     $("#jobBar").hidden = false; $("#btnVerify").disabled = true;
@@ -449,7 +460,7 @@
   // ---------- 달력·키 ----------
   async function loadCalendar() {
     const r = await api("/api/calendar"); const items = r.data; const next = items.slice().sort((a, b) => a.days_left - b.days_left)[0];
-    $("#deadlineNext").textContent = next.name; $("#deadlineSub").textContent = `${next.due} · D-${next.days_left}`;
+    state.calendar = items; $("#deadlineNext").textContent = next.name; $("#deadlineSub").textContent = `${next.due} · D-${next.days_left}`;
     $("#calendarTable").innerHTML = `<tr><th>항목</th><th class="num">기한</th><th class="num">D-day</th><th>근거</th><th>납품물</th></tr>` + items.map((i) => `<tr><td>${i.name}</td><td class="num">${i.due}</td><td class="num">D-${i.days_left}</td><td><span class="sub">${i.basis}</span></td><td>${i.deliverable}</td></tr>`).join("");
   }
   async function loadKeys() {
@@ -458,11 +469,105 @@
     $("#keyChips").innerHTML = Object.entries(keys).filter(([k]) => !k.includes("SECRET")).map(([k, v]) => `<span class="chip ${v ? "on" : ""}">${k.replace(/_API_KEY|_SERVICE_KEY|_CONSUMER_KEY|_SDK_SUBSCRIPTION_KEY|_KEY/, "")}</span>`).join("");
     $("#keysTable").innerHTML = `<tr><th>키</th><th>용도</th><th>상태</th></tr>` + Object.entries(keys).map(([k, v]) => `<tr><td><code>${k}</code></td><td>${DESC[k] || ""}</td><td><span class="mark ${v ? "detected" : "waiting_input"}">${v ? "설정됨" : "키 필요"}</span></td></tr>`).join("");
   }
-  document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("is-active", x === b));
-    const v = b.dataset.view; $("#viewDashboard").hidden = v !== "dashboard"; $("#viewCalendar").hidden = v !== "calendar"; $("#viewKeys").hidden = v !== "keys";
+  const VIEWS = { dashboard: "#viewDashboard", summary: "#viewSummary", calendar: "#viewCalendar", keys: "#viewKeys" };
+  function showView(v) {
+    document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("is-active", x.dataset.view === v));
+    for (const [k, sel] of Object.entries(VIEWS)) $(sel).hidden = k !== v;
+    document.querySelector(".margin-right").hidden = v !== "dashboard";
     if (v === "dashboard") setTimeout(() => map.resize(), 50);
-  }));
+    if (v === "summary") loadSummaryView();
+  }
+  document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => showView(b.dataset.view)));
+
+  // ---------- 담당자 요약(쉬운 말) ----------
+  const fmtKey = (k) => k.value == null ? `<b class="none">자료 부족</b>` : `<b>${k.signed && k.value > 0 ? "+" : ""}${k.value.toLocaleString("ko-KR")}${k.unit ? `<small>${k.unit}</small>` : ""}</b>`;
+  function renderSummary(mod) {
+    const s = mod.summary || {}; $("#sumHead").textContent = s.headline || VERDICT[mod.verdict?.code] || ""; $("#sumText").textContent = s.explain || ""; $("#sumText").hidden = !s.explain;
+    $("#keyNums").innerHTML = (s.key || []).map((k) => `<div class="keynum">${fmtKey(k)}<span>${k.label}</span></div>`).join(""); $("#keyNums").hidden = !(s.key || []).length;
+    $("#nextList").innerHTML = (s.next || []).map((n) => `<li>${n}</li>`).join(""); $("#nextBlock").hidden = !(s.next || []).length;
+    $("#expert").open = false;
+  }
+
+  // ---------- 관할 요약(과장·의회용) ----------
+  async function loadSummaryView() {
+    const kpi = $("#kpi"), tb = $("#sumTable"); kpi.innerHTML = `<div><b>…</b><span>불러오는 중</span></div>`;
+    const cards = await Promise.all(state.projects.map(async (p) => { if (!state.cards[p.id]) { try { state.cards[p.id] = (await api(`/api/projects/${p.id}/card`)).data; } catch (e) { return null; } } return state.cards[p.id]; }));
+    const rows = cards.filter(Boolean).map((c) => ({ c, m: c.modules[0], s: c.modules[0].summary || {} }));
+    const code = (r) => r.s.code || r.m.verdict?.code || "not_run";
+    const good = rows.filter((r) => ["detected", "recovered", "reduced"].includes(code(r))).length;
+    const bad = rows.filter((r) => ["gap_remaining", "not_reduced", "undetected"].includes(code(r))).length;
+    const none = rows.length - good - bad;
+    const budget = rows.reduce((a, r) => a + (r.c.project.budget_krw || 0), 0);
+    const next = state.calendar?.slice().sort((a, b) => a.days_left - b.days_left)[0];
+    kpi.innerHTML = `<div><b>${rows.length}</b><span>검정한 사업</span></div><div><b class="ok">${good}</b><span>효과 확인</span></div><div><b class="warn">${bad}</b><span>효과 미확인 또는 미흡</span></div><div><b>${none}</b><span>자료 부족·검정 전</span></div><div><b>${budget ? (budget / 1e8).toLocaleString("ko-KR", { maximumFractionDigits: 0 }) : "—"}<small>억 원</small></b><span>예산 합계(기재분)</span></div>${next ? `<div><b>D-${next.days_left}</b><span>${next.name}</span></div>` : ""}`;
+    tb.innerHTML = `<tr><th>사업</th><th>종류</th><th>기간</th><th class="num">예산</th><th>결론</th><th>핵심 수치</th><th>다음에 할 일</th></tr>` + rows.map((r) => {
+      const p = r.c.project; const k = (r.s.key || []).filter((x) => x.value != null).slice(0, 2).map((x) => `${x.label} ${x.signed && x.value > 0 ? "+" : ""}${x.value.toLocaleString("ko-KR")}${x.unit ? " " + x.unit : ""}`).join(", ");
+      return `<tr class="is-link" data-id="${p.id}"><td><b>${p.name}</b><span class="sub">${p.agency || ""}${p.region ? ", " + p.region : ""}</span></td><td>${TYPE_LABEL[p.type]}</td><td>${p.period || ""}</td><td class="num">${p.budget_krw ? (p.budget_krw / 1e8).toLocaleString("ko-KR", { maximumFractionDigits: 1 }) + "억" : "—"}</td><td><span class="mark ${code(r)}">${VERDICT[code(r)] || code(r)}</span><span class="sub">${r.s.headline || ""}</span></td><td>${k}</td><td>${(r.s.next || [])[0] || ""}</td></tr>`; }).join("");
+    tb.querySelectorAll("tr.is-link").forEach((tr) => tr.addEventListener("click", () => { showView("dashboard"); selectProject(tr.dataset.id); }));
+    const eqRows = rows.filter((r) => r.c.equity?.status === "ok" && r.c.equity.data.reallocation?.rows?.length);
+    $("#sumEquity").textContent = eqRows.map((r) => { const ra = r.c.equity.data.reallocation; const t = ra.rows.filter((x) => x.status === "treated"); const first = ra.rows[0]; return `${r.c.project.name}: 세대 밀도 기준 1순위는 ${first.dong}(${first.households}세대)이고, 실제 시공한 ${t.map((x) => x.dong).join(", ")}은 ${t.map((x) => x.rank + "순위").join(", ")}입니다.`; }).join(" ");
+  }
+
+  // ---------- 새 사업 등록 ----------
+  const reg = { form: $("#regPanel"), type: $("#rType") };
+  const regSync = () => { const t = reg.type.value; reg.form.querySelectorAll(".only").forEach((el) => { el.hidden = !el.classList.contains("only-" + t); }); };
+  reg.type.addEventListener("change", regSync);
+  $("#btnNew").addEventListener("click", () => {
+    showView("dashboard"); state.reg = { bbox: null, treated: [], control: [], pick: null, drawing: false };
+    $("#card").hidden = true; $("#cardEmpty").hidden = true; reg.form.hidden = false; regSync(); $("#drawInfo").textContent = "아직 범위가 없습니다"; $("#pickInfo").textContent = "지도의 건물을 누르면 담깁니다"; $("#regMsg").textContent = "";
+    if (!map.getSource("draw")) { map.addSource("draw", { type: "geojson", data: { type: "FeatureCollection", features: [] } }); map.addLayer({ id: "draw-line", type: "line", source: "draw", paint: { "line-color": "#b3261e", "line-width": 2, "line-dasharray": [2, 2] } }); map.addLayer({ id: "draw-fill", type: "fill", source: "draw", paint: { "fill-color": "#b3261e", "fill-opacity": 0.08 } }); }
+    map.getSource("tc").setData({ type: "FeatureCollection", features: [] }); map.getSource("pts").setData({ type: "FeatureCollection", features: [] });
+    if (map.getLayer("overlay")) { map.removeLayer("overlay"); map.removeSource("overlay"); } $("#legend").hidden = true; $("#timeline").hidden = true; $("#overlaySeg").hidden = true; $("#opacityWrap").hidden = true; $("#mapActions").hidden = true;
+    if (is3D()) { $("#btn3d").setAttribute("aria-pressed", "false"); apply3D(map, false); map.easeTo({ pitch: 0, bearing: 0, duration: 600 }); }
+  });
+  const closeReg = () => { state.reg = null; reg.form.hidden = true; $("#cardEmpty").hidden = !!state.card; $("#card").hidden = !state.card; if (map.getSource("draw")) map.getSource("draw").setData({ type: "FeatureCollection", features: [] }); map.dragPan.enable(); map.getCanvas().style.cursor = ""; if (state.current) selectProject(state.current); };
+  $("#regClose").addEventListener("click", closeReg);
+  // 범위 그리기: 누른 채 끌어 직사각형. 끝나면 끌기 복구
+  $("#btnDraw").addEventListener("click", () => {
+    if (!state.reg) return; state.reg.drawing = true; state.reg.pick = null; $("#btnPickT").setAttribute("aria-pressed", "false"); $("#btnPickC").setAttribute("aria-pressed", "false");
+    map.dragPan.disable(); map.getCanvas().style.cursor = "crosshair"; toast("지도 위에서 누른 채 끌어 범위를 그리세요"); let start = null;
+    const rect = (a, b) => ({ type: "Feature", properties: {}, geometry: bboxPoly([Math.min(a.lng, b.lng), Math.min(a.lat, b.lat), Math.max(a.lng, b.lng), Math.max(a.lat, b.lat)]) });
+    const onDown = (e) => { start = e.lngLat; };
+    const onMove = (e) => { if (start) map.getSource("draw").setData({ type: "FeatureCollection", features: [rect(start, e.lngLat)] }); };
+    const onUp = (e) => { if (!start) return; const b = [Math.min(start.lng, e.lngLat.lng), Math.min(start.lat, e.lngLat.lat), Math.max(start.lng, e.lngLat.lng), Math.max(start.lat, e.lngLat.lat)]; start = null;
+      map.off("mousedown", onDown); map.off("mousemove", onMove); map.off("mouseup", onUp); map.dragPan.enable(); map.getCanvas().style.cursor = "";
+      if (b[2] - b[0] < 1e-4 || b[3] - b[1] < 1e-4) { toast("범위가 너무 작습니다. 다시 그리세요"); state.reg.drawing = false; return; }
+      state.reg.bbox = b.map((x) => +x.toFixed(5)); setTimeout(() => { state.reg.drawing = false; }, 50);
+      const km2 = (b[2] - b[0]) * 111 * Math.cos(b[1] * Math.PI / 180) * (b[3] - b[1]) * 111;
+      $("#drawInfo").textContent = `범위 ${km2.toFixed(1)} km² (${b[1].toFixed(3)}~${b[3].toFixed(3)}°N, ${b[0].toFixed(3)}~${b[2].toFixed(3)}°E)`; };
+    map.on("mousedown", onDown); map.on("mousemove", onMove); map.on("mouseup", onUp);
+  });
+  // 건물 고르기(옥상 차열): 바탕 지도의 건물 외곽선을 그대로 담는다
+  const setPick = (mode) => { state.reg.pick = state.reg.pick === mode ? null : mode; $("#btnPickT").setAttribute("aria-pressed", String(state.reg.pick === "treated")); $("#btnPickC").setAttribute("aria-pressed", String(state.reg.pick === "control")); map.getCanvas().style.cursor = state.reg.pick ? "pointer" : ""; if (state.reg.pick && map.getZoom() < 15) toast("건물이 보이도록 더 확대하세요"); };
+  $("#btnPickT").addEventListener("click", () => setPick("treated")); $("#btnPickC").addEventListener("click", () => setPick("control"));
+  function pickBuilding(e) {
+    const layers = ["bld-3d", "building", "building-3d"].filter((l) => map.getLayer(l));
+    const f = map.queryRenderedFeatures(e.point, { layers })[0]; if (!f) { toast("여기에는 건물 외곽선이 없습니다"); return; }
+    const role = state.reg.pick; const h = f.properties.render_height || f.properties.height || 12; const floors = Math.max(1, Math.round(h / 3));
+    const feat = { type: "Feature", properties: { name: `${role === "treated" ? "시공" : "비교"} ${state.reg[role].length + 1}`, floors, role }, geometry: f.geometry };
+    state.reg[role].push(feat);
+    map.getSource("tc").setData({ type: "FeatureCollection", features: [...state.reg.treated, ...state.reg.control] });
+    $("#pickInfo").textContent = `시공 ${state.reg.treated.length}동, 비교 ${state.reg.control.length}동 담김`;
+  }
+  reg.form.addEventListener("submit", async (ev) => {
+    ev.preventDefault(); if (!state.reg) return; const t = reg.type.value; const msg = $("#regMsg");
+    if (!state.reg.bbox) { msg.textContent = "지도에서 범위를 먼저 그리세요"; return; }
+    if (t === "heat" && (!state.reg.treated.length || !state.reg.control.length)) { msg.textContent = "시공한 동과 비교할 동을 하나 이상 고르세요"; return; }
+    const id = `${t}-${Date.now().toString(36)}`; const budget = $("#rBudget").value ? Math.round(+$("#rBudget").value * 1e8) : null;
+    const prj = { id, name: $("#rName").value.trim(), type: t, modules: [t], agency: $("#rAgency").value.trim(), region: $("#rRegion").value.trim(), budget_krw: budget, geometry: { bbox: state.reg.bbox }, beneficiaries: [], notes: ["화면에서 등록"] };
+    if (t === "fire") { if (!$("#rEvent").value) { msg.textContent = "산불 발생일을 적으세요"; return; } prj.event_date = $("#rEvent").value; prj.contained_date = $("#rContained").value || $("#rEvent").value; prj.period = `${prj.event_date.slice(0, 7)} ~`; prj.params = { res_m: 40, dnbr_threshold: 0.27, prefire_ndvi_min: 0.3, control_abs_dnbr_max: 0.05 }; }
+    else { const yb = +$("#rBefore").value, ya = +$("#rAfter").value; if (!yb || !ya) { msg.textContent = "사업 전후 연도를 적으세요"; return; } prj.years_before = [yb]; prj.years_after = [ya]; prj.period = `${yb} ~ ${ya}`;
+      if (t === "heat") { prj.geometry.treated = state.reg.treated.map((f) => ({ type: "Feature", properties: { name: f.properties.name, floors: f.properties.floors }, geometry: f.geometry })); prj.geometry.control = state.reg.control.map((f) => ({ type: "Feature", properties: { name: f.properties.name, floors: f.properties.floors }, geometry: f.geometry })); prj.params = { res_m: 30, max_cloud: 40 }; }
+      if (t === "flood") { if (!$("#rStn").value.trim()) { msg.textContent = "기상청 지점번호를 적으세요"; return; } prj.kma_stn = $("#rStn").value.trim(); prj.events = []; } }
+    msg.textContent = "저장 중";
+    const res = await fetch("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ project: prj }) });
+    const r = await res.json().catch(() => ({}));
+    if (!res.ok) { msg.textContent = r.detail || `저장하지 못했습니다 (${res.status})`; return; }
+    await loadProjects(); state.reg = null; reg.form.hidden = true; if (map.getSource("draw")) map.getSource("draw").setData({ type: "FeatureCollection", features: [] });
+    await selectProject(id);
+    const vr = await fetch(`/api/projects/${id}/verify/${t}`, { method: "POST" }); const vj = await vr.json().catch(() => ({}));
+    if (vr.ok && vj.data) { toast("등록했습니다. 위성 자료로 검정을 시작합니다"); watchJob(vj.data.id); } else toast(vj.warnings?.[0] || vj.detail || "등록은 되었으나 검정을 시작하지 못했습니다");
+  });
   let toastTimer; function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; t.classList.remove("hide"); clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.classList.add("hide"); setTimeout(() => (t.hidden = true), 220); }, 4200); }
 
   (async () => {

@@ -11,6 +11,7 @@
 .colophon .sheet-nav{grid-area:nav} .colophon .credits{grid-area:credits;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .colophon #colophonRight{grid-area:made;white-space:nowrap}
 .colophon .keychips{grid-area:chips;justify-content:flex-start} .keychips .chip{font-size:10px;padding:0 5px}
 .margin-left{grid-area:index;border-right:0;border-bottom:1px solid var(--rule);padding:8px 14px 8px 0;flex-direction:row;align-items:center;gap:12px;overflow:visible}
+.margin-left .new-btn{order:2} .margin-left .deadline{order:3}
 .margin-left>.k{display:none}
 .index{grid-template-columns:repeat(3,minmax(0,1fr));flex:1;gap:8px}
 .index-tile{padding:7px 10px 6px}

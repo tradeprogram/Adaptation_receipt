@@ -194,7 +194,7 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
         },
         "severity": severity, "series": series, "scenes": scenes, "failed": failed,
         "overlays": {"dnbr": f"/api/projects/{p['id']}/overlay/dnbr.png", "pre": f"/api/projects/{p['id']}/overlay/pre.png", "post": f"/api/projects/{p['id']}/overlay/post.png", **ndvi_overlays, "bounds": bbox,
-                     "legend": {**ndvi_legend, "dnbr": {"label": "피해등급", "type": "classes", "query": "dnbr", "items": [{"c": "#f7e26b", "t": "경"}, {"c": "#f29e2e", "t": "중"}, {"c": "#d7301f", "t": "중강"}, {"c": "#7a0177", "t": "강"}], "note": "dNBR 등급, Key & Benson 2006"},
+                     "legend": {**ndvi_legend, "dnbr": {"label": "피해등급", "type": "classes", "query": "dnbr", "items": [{"c": "#f7e26b", "t": "경"}, {"c": "#f29e2e", "t": "중"}, {"c": "#d7301f", "t": "중강"}, {"c": "#7a0177", "t": "강"}], "note": "불탄 정도. 위성 지표 dNBR 기준(Key & Benson 2006)"},
                                 "pre": {"label": "산불 전", "type": "text", "text": f"Sentinel-2 진색 합성 {next((x['date'] for x in scenes if x['label'] == 'pre'), '')}"},
                                 "post": {"label": "진화 직후", "type": "text", "text": f"Sentinel-2 진색 합성 {next((x['date'] for x in scenes if x['label'] == 'post'), '')}"}}},
         "verdict": _verdict(last_ratio, did["effect"], mde, ci),

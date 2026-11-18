@@ -169,7 +169,7 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
         pz = perm_any if perm_any is not None else np.zeros(shape, bool)
         u = f"/api/projects/{p['id']}/overlay/"; overlays = {"bounds": bbox, "legend": {}}; layers = {"bbox": np.array(bbox, dtype="float64")}
         items2 = [{"c": "#1f5aa0", "t": "침수 추정"}, {"c": "#787878", "t": "상시 수역"}]
-        rule = f"VV {WATER_DB:.0f} dB 미만이고 기준선보다 {abs(CHANGE_DB):.0f} dB 이상 낮은 화소"
+        rule = "위성 레이더(Sentinel-1)가 잔잔한 물로 판독한 화소"
         for ph, lab in (("before", "정비 전"), ("after", "정비 후")):
             if union[ph] is not None:
                 cls = np.where(union[ph], 1, np.where(pz, 2, 0)).astype("uint8"); layers[f"flood_{ph}"] = cls

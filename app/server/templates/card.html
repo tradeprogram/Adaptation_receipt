@@ -35,6 +35,11 @@
   .foot{margin-top:24px;font-size:11px;color:var(--ink-3);border-top:1px solid var(--rule);padding-top:8px;font-family:var(--marg);letter-spacing:.03em}
   .warn{border:1px solid var(--seal);background:var(--slip);color:var(--seal);padding:8px 12px;font-size:12px}
   details summary{cursor:pointer}
+  .sum{margin:6px 0 10px;padding:12px 14px;border:1px solid var(--rule);background:#fff}
+  .sum-head{font-size:16px;font-weight:700;line-height:1.35}.sum-text{margin:6px 0 0;font-size:12.5px;line-height:1.6}
+  .keynums{display:grid;grid-template-columns:repeat(3,1fr);margin:10px 0 0;border-top:1px solid var(--rule)}.keynums div{padding:8px 6px 6px;border-right:1px solid #ddd}.keynums div:last-child{border-right:0}
+  .keynums b{display:block;font-size:20px;font-family:"Courier Prime",monospace}.keynums small{font-size:11px;font-weight:400}.keynums span{font-size:11px;color:var(--muted)}
+  .next{margin-top:10px;font-size:12.5px}.next b{font-size:11px;letter-spacing:.08em;color:var(--muted)}.next ol{margin:4px 0 0 18px;line-height:1.55}
   .snap{margin:14px 0 4px;break-inside:avoid}.snap img{display:block;width:100%;border:1px solid var(--rule)}.snap figcaption{font-size:11px;color:var(--muted);margin-top:4px}
   @media print{.sheet{margin:0;border:0;padding:0}}
 </style>
@@ -62,41 +67,48 @@
 
   {% for m in card.modules %}
   <h2>{{ m.label }}</h2>
-  <div class="verdict {{ m.verdict.code }}"><b>판정 {{ {'detected':'효과 검출','recovered':'대조지 수준 회복','gap_remaining':'회복 격차 잔존','undetected':'미검출','unmeasured':'측정 불가','ready':'2단계 실행 가능','waiting':'대기','waiting_input':'입력 대기','not_run':'미실행','failed':'실패','reduced':'침수 범위 감소','not_reduced':'침수 범위 미감소'}.get(m.verdict.code, m.verdict.code) }}</b> {{ m.verdict.text }}</div>
+  {% set s = m.summary %}
+  <div class="sum">
+    <div class="sum-head">{{ s.headline }}</div>
+    {% if s.explain %}<p class="sum-text">{{ s.explain }}</p>{% endif %}
+    {% if s.key %}<div class="keynums">{% for k in s.key %}<div><b>{% if k.value is none %}자료 부족{% else %}{% if k.signed and k.value > 0 %}+{% endif %}{{ "{:,}".format(k.value) }}{% if k.unit %} <small>{{ k.unit }}</small>{% endif %}{% endif %}</b><span>{{ k.label }}</span></div>{% endfor %}</div>{% endif %}
+    {% if s.next %}<div class="next"><b>다음에 할 일</b><ol>{% for n in s.next %}<li>{{ n }}</li>{% endfor %}</ol></div>{% endif %}
+  </div>
+  <div class="verdict {{ m.verdict.code }}"><b>판정 {{ s.verdict_plain }}</b> {{ m.verdict.text }}</div>
   {% if m.needs %}<div class="warn">필요한 입력: {{ m.needs|join(", ") }}</div>{% endif %}
   {% if m.metrics %}
   <table>
-    <tr><th>지표</th><th class="num">값</th><th>n</th><th>출처</th><th>설명</th></tr>
+    <tr><th>항목</th><th class="num">값</th><th>n</th><th>출처</th><th>설명</th></tr>
     {% for r in m.metrics %}
-    <tr><td>{{ r.key }}</td><td class="num">{% if r.measured %}{{ r.display }}{% else %}<span class="none">측정 불가</span>{% endif %}</td><td>{{ r.n if r.n is not none else "" }}</td><td><span class="badge {{ r.badge }}">{{ r.badge_label }}</span></td><td style="color:var(--muted)">{{ r.note }}</td></tr>
+    <tr><td>{{ r.label }}<div style="font-size:10px;color:var(--muted)">{{ r.key }}</div></td><td class="num">{% if r.measured %}{{ r.display }}{% else %}<span class="none">측정 불가</span>{% endif %}</td><td>{{ r.n if r.n is not none else "" }}</td><td><span class="badge {{ r.badge }}">{{ r.badge_label }}</span></td><td style="color:var(--muted)">{{ r.note }}</td></tr>
     {% endfor %}
   </table>
   {% endif %}
   {% if m.series %}
-  <table style="margin-top:8px"><tr><th>시점</th><th>관측일</th><th class="num">피해지 NDVI 중앙값</th><th class="num">대조지 NDVI 중앙값</th><th class="num">회복률</th><th class="num">n(피해/대조)</th></tr>
+  <table style="margin-top:8px"><tr><th>시점</th><th>관측일</th><th class="num">피해지 식생지수</th><th class="num">주변 숲 식생지수</th><th class="num">회복률</th><th class="num">화소 수(피해/주변)</th></tr>
     {% for s in m.series %}<tr><td>{{ s.label }}</td><td>{{ s.date }}</td><td class="num">{{ "%.3f"|format(s.burned.median) if s.burned.median is not none else "—" }}</td><td class="num">{{ "%.3f"|format(s.control.median) if s.control.median is not none else "—" }}</td><td class="num">{{ "%.2f"|format(s.recovery_ratio) if s.recovery_ratio is not none else "—" }}</td><td class="num">{{ s.burned.n }}/{{ s.control.n }}</td></tr>{% endfor %}
   </table>
   {% endif %}
   {% if m.severity %}
-  <table style="margin-top:8px"><tr><th>dNBR 피해등급</th><th class="num">면적(ha)</th></tr>{% for s in m.severity %}<tr><td>{{ s.label }}</td><td class="num">{{ "{:,}".format(s.ha) }}</td></tr>{% endfor %}</table>
+  <table style="margin-top:8px"><tr><th>피해 정도</th><th class="num">면적(ha)</th></tr>{% for s in m.severity %}<tr><td>{{ s.label }}</td><td class="num">{{ "{:,}".format(s.ha) }}</td></tr>{% endfor %}</table>
   {% endif %}
   {% if m.events %}
-  <table style="margin-top:8px"><tr><th>사건</th><th>정점</th><th>단계</th><th>등급</th><th class="num">첫 관측(시간 후)</th></tr>{% for e in m.events %}<tr><td>{{ e.name }}</td><td>{{ e.event_peak }}</td><td>{{ e.phase }}</td><td><b>{{ e.grade }}</b></td><td class="num">{{ e.first_pass_hours if e.first_pass_hours is not none else "미관측" }}</td></tr>{% endfor %}</table>
+  <table style="margin-top:8px"><tr><th>호우</th><th>정점(UTC)</th><th>시기</th><th>관측 등급</th><th class="num">첫 위성 관측(시간 뒤)</th></tr>{% for e in m.events %}<tr><td>{{ e.name }}</td><td>{{ e.event_peak }}</td><td>{{ "정비 전" if e.phase == "before" else "정비 후" }}</td><td><b>{{ e.grade }}</b></td><td class="num">{{ e.first_pass_hours if e.first_pass_hours is not none else "미관측" }}</td></tr>{% endfor %}</table>
   {% endif %}
   {% if m.design %}<div style="font-size:11px;color:var(--muted);margin-top:8px"><b>설계:</b> {% for k,v in m.design.items() %}{{ k }}={{ v }}{% if not loop.last %}, {% endif %}{% endfor %}</div>{% endif %}
-  {% if m.scenes %}<details style="margin-top:6px"><summary style="font-size:11px;color:var(--muted);cursor:pointer">재현 매니페스트, 장면 {{ m.scenes|length }}건{% if m.failed %}, 실패 {{ m.failed|length }}건{% endif %}</summary>
+  {% if m.scenes %}<details style="margin-top:6px"><summary style="font-size:11px;color:var(--muted);cursor:pointer">사용한 위성 사진 {{ m.scenes|length }}장{% if m.failed %}, 실패 {{ m.failed|length }}건{% endif %}</summary>
     <table style="font-size:11px"><tr><th>시점</th><th>관측일</th><th>장면 ID</th><th>기준선</th><th class="num">구름%</th><th class="num">유효%</th></tr>
     {% for s in m.scenes %}<tr><td>{{ s.label or s.year }}</td><td>{{ s.date or "없음" }}</td><td style="word-break:break-all">{{ (s.ids|join(", ")) if s.ids is defined else s.id }}</td><td>{{ s.processing_baseline or "" }}</td><td class="num">{{ "%.1f"|format(s.cloud_cover) if s.cloud_cover is not none else "" }}</td><td class="num">{{ s.valid_pct if s.valid_pct is defined else "" }}</td></tr>{% endfor %}
     {% for f in m.failed %}<tr><td colspan="6" class="none">실패: {{ f }}</td></tr>{% endfor %}</table></details>{% endif %}
-  {% if m.limitations %}<div style="margin-top:8px"><b style="font-size:12px">한계</b><ul>{% for l in m.limitations %}<li>{{ l }}</li>{% endfor %}</ul></div>{% endif %}
+  {% if m.limitations %}<div style="margin-top:8px"><b style="font-size:12px">유의할 점</b><ul>{% for l in m.limitations %}<li>{{ l }}</li>{% endfor %}</ul></div>{% endif %}
   {% endfor %}
 
-  <h2>형평성 감사</h2>
+  <h2>누가 혜택을 받았나 <span style="font-weight:400;font-size:12px;color:var(--muted)">형평성 감사</span></h2>
   {% if card.equity %}
     {% if card.equity.status != "ok" %}<div class="warn">{{ card.equity.warnings|join(" / ") }}</div>
     <div style="font-size:12px;color:var(--muted);margin-top:6px">지표 설계: {{ card.equity.data.design.indicators|join(", ") }}, 단위 {{ card.equity.data.design.unit }}</div>
     {% else %}
-    <table><tr><th>지표</th><th class="num">값</th><th>n</th><th>출처</th></tr>{% for k,mt in card.equity.data.metrics.items() %}<tr><td>{{ k }}</td><td class="num">{{ mt.value if mt.value is not none else "측정 불가" }}</td><td>{{ mt.n or "" }}</td><td><span class="badge {{ mt.badge }}">{{ card.badges[mt.badge] }}</span></td></tr>{% endfor %}</table>
+    <table><tr><th>지표</th><th class="num">값</th><th>n</th><th>출처</th></tr>{% for k,mt in card.equity.data.metrics.items() %}<tr><td>{{ card.labels.get(k, k) }}</td><td class="num">{{ mt.value if mt.value is not none else "측정 불가" }}</td><td>{{ mt.n or "" }}</td><td><span class="badge {{ mt.badge }}">{{ card.badges[mt.badge] }}</span></td></tr>{% endfor %}</table>
     {% set ra = card.equity.data.reallocation %}{% if ra and ra.rows %}
     <div style="font-size:12px;font-weight:700;margin-top:10px">다음 집행 순위 시뮬레이션 <span style="font-weight:400;color:var(--muted)">{{ ra.rule }}</span></div>
     <table><tr><th>순위</th><th>동</th><th class="num">세대</th><th class="num">지붕 m²</th><th class="num">세대/100m²</th><th class="num">누적 세대</th><th class="num">누적 지붕 m²</th><th>상태</th></tr>
