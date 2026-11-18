@@ -22,12 +22,14 @@
   const legendOf = (mod, key) => { const L = mod?.overlays?.legend?.[key]; return typeof L === "string" ? { label: OV_LABEL[key] || key, type: "text", text: L } : L; };
   const ovLabel = (mod, key) => legendOf(mod, key)?.label || OV_LABEL[key] || key;
   const ovKeys = (mod) => Object.keys(mod?.overlays || {}).filter((k) => !["bounds", "legend"].includes(k));
-  const mainKeys = (mod) => ovKeys(mod).filter((k) => !legendOf(mod, k)?.event);
+  const mainKeys = (mod) => ovKeys(mod).filter((k) => { const L = legendOf(mod, k); return !(L?.event || L?.series); });
   const eventKeys = (mod) => ovKeys(mod).filter((k) => legendOf(mod, k)?.event);
+  // 시간 순 프레임: 호우 사건(침수) 또는 장면별 NDVI(산불). 라벨의 날짜로 정렬한다
+  const frameKeys = (mod) => ovKeys(mod).filter((k) => { const L = legendOf(mod, k); return L?.event || L?.series; }).sort((a, b) => String(legendOf(mod, a).date || legendOf(mod, a).label).localeCompare(String(legendOf(mod, b).date || legendOf(mod, b).label)));
 
   // ---------- 지면(지도) ----------
   const STYLE = "https://tiles.openfreemap.org/styles/liberty";
-  const map = new maplibregl.Map({ container: "map", style: STYLE, center: [127.8, 36.4], zoom: 6.3, maxPitch: 70, attributionControl: { compact: true }, preserveDrawingBuffer: true });
+  const map = new maplibregl.Map({ container: "map", style: STYLE, center: [127.8, 36.4], zoom: 6.3, maxPitch: 70, attributionControl: { compact: true }, canvasContextAttributes: { preserveDrawingBuffer: true, antialias: true } });
   map.addControl(new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }), "top-right");
   // 3D 지형: AWS 공개 지형 타일(terrarium, 키 불필요). 같은 버킷의 주소 셋으로 나눠 동시 요청 수를 늘린다
   const TERRAIN = { type: "raster-dem", tiles: ["https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png", "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png", "https://elevation-tiles-prod.s3.us-east-1.amazonaws.com/terrarium/{z}/{x}/{y}.png"], tileSize: 256, encoding: "terrarium", maxzoom: 15, attribution: "Terrain: Mapzen, AWS" };
@@ -135,6 +137,8 @@
     const mod = state.card?.modules?.find((m) => m.overlays);
     renderLegend(mod, name);
     document.querySelectorAll("#overlaySeg [data-ov]").forEach((x) => x.classList.toggle("is-active", x.dataset.ov === name));
+    document.querySelectorAll("#timeline .frame").forEach((x) => x.classList.toggle("is-active", x.dataset.ov === name));
+    const Lcur = legendOf(mod, name); if (Lcur?.date) highlightSeries(Lcur.date);
     if (state.compare) { disableCompare(false); }
     if (!mod || name === "none" || !mod.overlays[name]) return;
     addOverlayTo(map, "overlay", mod.overlays[name] + "?t=" + Date.now(), mod.overlays.bounds, +$("#opacity").value / 100);
@@ -154,12 +158,35 @@
     seg.hidden = !has; $("#opacityWrap").hidden = !has; $("#mapActions").hidden = !has;
     if (!has) { if (map.getLayer("overlay")) { map.removeLayer("overlay"); map.removeSource("overlay"); } $("#legend").hidden = true; return; }
     if (!ovKeys(mod).includes(state.overlay) && state.overlay !== "none") state.overlay = keys[0];
-    seg.innerHTML = [...keys, "none"].map((k) => `<button class="seg-btn${k === state.overlay ? " is-active" : ""}" data-ov="${k}">${ovLabel(mod, k)}</button>`).join("")
-      + (evs.length ? `<select class="seg-select" id="evtSelect" aria-label="사건별 침수"><option value="">사건별 보기</option>${evs.map((k) => `<option value="${k}"${k === state.overlay ? " selected" : ""}>${ovLabel(mod, k)}</option>`).join("")}</select>` : "");
+    seg.innerHTML = [...keys, "none"].map((k) => `<button class="seg-btn${k === state.overlay ? " is-active" : ""}" data-ov="${k}">${ovLabel(mod, k)}</button>`).join("");
     $("#btnCompare").hidden = !PAIRS.some((pr) => mod.overlays[pr[0]] && mod.overlays[pr[1]]);
-    const sel = $("#evtSelect"); if (sel) sel.addEventListener("change", () => { if (sel.value) setOverlay(sel.value); });
+    renderTimeline(mod);
   }
-  $("#overlaySeg").addEventListener("click", (e) => { const b = e.target.closest("[data-ov]"); if (!b) return; const sel = $("#evtSelect"); if (sel) sel.value = ""; setOverlay(b.dataset.ov); });
+  // ---------- 시간 순 재생(호우 사건, 회복 시계열) ----------
+  let playTimer = null;
+  function renderTimeline(mod) {
+    const frames = frameKeys(mod); const tl = $("#timeline"); stopPlay();
+    tl.hidden = !frames.length; $("#btnPlay").hidden = !frames.length; if (!frames.length) { tl.innerHTML = ""; return; }
+    const isEvt = !!legendOf(mod, frames[0]).event;
+    tl.innerHTML = `<span class="tl-title">${isEvt ? "호우 사건" : "회복 시계열"}</span><div class="tl-track">` + frames.map((k) => { const L = legendOf(mod, k); const ph = isEvt ? (L.note || "").slice(0, 4) : ""; return `<button class="frame${k === state.overlay ? " is-active" : ""}" data-ov="${k}" title="${L.note || ""}"><i></i><span class="d">${L.date || L.label}</span><span class="s">${isEvt ? ph : (L.label || "").replace(/^\S+\s*/, "")}</span></button>`; }).join("") + `</div>`;
+    tl.querySelectorAll(".frame").forEach((b) => b.addEventListener("click", () => { stopPlay(); setOverlay(b.dataset.ov); }));
+  }
+  function stopPlay() { if (playTimer) { clearInterval(playTimer); playTimer = null; } $("#btnPlay").setAttribute("aria-pressed", "false"); $("#btnPlay").textContent = "재생"; }
+  $("#btnPlay").addEventListener("click", () => {
+    if (playTimer) { stopPlay(); return; }
+    const mod = state.card?.modules?.find((m) => m.overlays); const frames = frameKeys(mod); if (!frames.length) return;
+    let i = Math.max(0, frames.indexOf(state.overlay)); if (i === frames.length - 1 || frames.indexOf(state.overlay) < 0) i = -1;
+    const step = () => { i = (i + 1) % frames.length; setOverlay(frames[i]); if (i === frames.length - 1) { setTimeout(stopPlay, 2400); } };
+    $("#btnPlay").setAttribute("aria-pressed", "true"); $("#btnPlay").textContent = "정지"; step(); playTimer = setInterval(step, 2400);
+  });
+  // 회복 단면도에서 해당 날짜 점을 키운다
+  function highlightSeries(date) {
+    const mod = state.card?.modules?.[0]; if (!state.chart || !mod?.series) return;
+    const idx = mod.series.findIndex((x) => x.date === date);
+    state.chart.data.datasets.forEach((d, di) => { if (di === 0 || di === 3) d.pointRadius = mod.series.map((_, k) => (k === idx ? 7 : 3.5)); }); state.chart.update("none");
+    $("#passrail").querySelectorAll(".tick").forEach((x) => x.classList.toggle("is-active", x.dataset.date === date));
+  }
+  $("#overlaySeg").addEventListener("click", (e) => { const b = e.target.closest("[data-ov]"); if (!b) return; stopPlay(); setOverlay(b.dataset.ov); });
   document.querySelectorAll("[data-base]").forEach((b) => b.addEventListener("click", () => {
     document.querySelectorAll("[data-base]").forEach((x) => x.classList.toggle("is-active", x === b));
     map.setLayoutProperty("sat", "visibility", b.dataset.base === "sat" ? "visible" : "none");
@@ -196,7 +223,7 @@
     const o = +$("#opacity").value / 100; const b = mod.overlays.bounds;
     const place = () => { addOverlayTo(mapB, "overlayB", mod.overlays[pr[1]] + "?t=" + Date.now(), b, o); mapB.resize(); };
     if (!mapB) {
-      mapB = new maplibregl.Map({ container: "mapB", style: STYLE, center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), maxPitch: 70, interactive: false, attributionControl: false, preserveDrawingBuffer: true });
+      mapB = new maplibregl.Map({ container: "mapB", style: STYLE, center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(), maxPitch: 70, interactive: false, attributionControl: false, canvasContextAttributes: { preserveDrawingBuffer: true, antialias: true } });
       mapB.on("load", () => { koreanize(mapB); mapB.addSource("sat", SAT); mapB.addLayer({ id: "sat", type: "raster", source: "sat", layout: { visibility: map.getLayoutProperty("sat", "visibility") || "none" } }, firstSymbolLayer(mapB)); dressMap(mapB); apply3D(mapB, is3D()); place(); });
       map.on("move", () => { if (mapB) mapB.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() }); });
     } else { mapB.jumpTo({ center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() }); if (mapB.isStyleLoaded()) place(); else mapB.once("load", place); }
@@ -224,7 +251,7 @@
   })();
 
   // ---------- 지도 저장(PNG): 지도 + 범례 + 축척 + 제목 ----------
-  $("#btnExport").addEventListener("click", () => {
+  function composeMap() {
     const src = map.getCanvas(); const W = src.width, H = src.height; const dpr = W / src.clientWidth;
     const c = document.createElement("canvas"); c.width = W; c.height = H + Math.round(120 * dpr); const g = c.getContext("2d");
     g.fillStyle = "#fbfaf6"; g.fillRect(0, 0, c.width, c.height);
@@ -237,8 +264,21 @@
     y += 48 * dpr; let x = 16 * dpr;
     if (L?.type === "classes") { for (const it of L.items) { g.fillStyle = it.c; g.fillRect(x, y - 10 * dpr, 16 * dpr, 11 * dpr); g.strokeStyle = "rgba(20,20,20,.4)"; g.strokeRect(x, y - 10 * dpr, 16 * dpr, 11 * dpr); g.fillStyle = "#141414"; g.font = f(12); g.fillText(it.t, x + 22 * dpr, y); x += (28 + g.measureText(it.t).width / dpr + 14) * dpr; } }
     else if (L?.type === "ramp") { const gr = g.createLinearGradient(x, 0, x + 220 * dpr, 0); L.stops.forEach((s, i) => gr.addColorStop(i / (L.stops.length - 1), s)); g.fillStyle = gr; g.fillRect(x, y - 10 * dpr, 220 * dpr, 11 * dpr); g.strokeStyle = "rgba(20,20,20,.4)"; g.strokeRect(x, y - 10 * dpr, 220 * dpr, 11 * dpr); g.fillStyle = "#141414"; g.font = f(12); g.fillText(`${L.min}${L.unit || ""}`, x, y + 16 * dpr); g.fillText(`${L.max}${L.unit || ""}`, x + 200 * dpr, y + 16 * dpr); }
-    g.fillStyle = "#6e6a62"; g.font = f(10); g.fillText("적응 영수증 · OpenFreeMap © OpenMapTiles, OpenStreetMap · Copernicus Sentinel · USGS Landsat", 16 * dpr, c.height - 10 * dpr);
+    g.fillStyle = "#6e6a62"; g.font = f(10); g.fillText("적응 영수증, OpenFreeMap © OpenMapTiles, OpenStreetMap, Esri World Imagery, Mapzen terrain, Copernicus Sentinel, USGS Landsat", 16 * dpr, c.height - 10 * dpr);
+    return { canvas: c, caption: `${p?.name || ""}. ${L?.label || ""}${state.compare ? ", 전후 비교" : ""}${is3D() ? ", 3D 지형" : ""}. ${new Date().toISOString().slice(0, 10)} 화면 갈무리` };
+  }
+  $("#btnExport").addEventListener("click", () => {
+    const { canvas: c } = composeMap();
     const a = document.createElement("a"); a.download = `adaptation-receipt_${state.current}_${state.overlay}.png`; a.href = c.toDataURL("image/png"); a.click();
+  });
+  // 카드 인쇄: 지금 보이는 지면 장면을 인쇄 카드에 싣는다(브라우저 저장소 + 서버가 쓰기 가능하면 결과 폴더)
+  $("#btnCard").addEventListener("click", () => {
+    if (!state.card) return;
+    try {
+      const { canvas: c, caption } = composeMap(); const img = c.toDataURL("image/jpeg", 0.82);
+      try { localStorage.setItem(`ar-snap-${state.current}`, JSON.stringify({ img, caption, at: new Date().toISOString() })); } catch (e) { /* 저장소 한도 초과 시 서버 저장만 */ }
+      fetch(`/api/projects/${state.current}/snapshot`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: img, caption }) }).catch(() => {});
+    } catch (e) { /* 장면 없이 인쇄 */ }
   });
 
   // ---------- 도엽 색인 ----------
@@ -295,7 +335,7 @@
     $("#eventsBlock").hidden = !mod.events;
     if (mod.events) {
       $("#eventsTable").innerHTML = `<tr><th>사건</th><th>단계</th><th>등급</th><th class="num">첫 관측(시간)</th><th class="num">침수 ha</th></tr>` + mod.events.map((e) => { const key = "flood_evt_" + e.event_peak.slice(0, 10).replaceAll("-", ""); const link = mod.overlays?.[key]; return `<tr${link ? ` class="is-link" data-ov="${key}" title="지도에서 보기"` : ""}><td>${e.name}<span class="sub">${e.event_peak} UTC${e.passes?.[0] ? ", 궤도 " + e.passes[0].relative_orbit : ""}</span></td><td>${e.phase === "before" ? "정비 전" : "정비 후"}</td><td><span class="mark ${e.grade === "C" ? "undetected" : "detected"}">${e.grade}</span></td><td class="num">${e.first_pass_hours ?? "미관측"}</td><td class="num">${e.stage2?.flooded_ha != null ? e.stage2.flooded_ha.toLocaleString("ko-KR") : (e.stage2?.error ? `<span class="sub">${e.stage2.error}</span>` : "—")}</td></tr>`; }).join("");
-      $("#eventsTable").querySelectorAll("tr.is-link").forEach((tr) => tr.addEventListener("click", () => { const sel = $("#evtSelect"); if (sel) sel.value = tr.dataset.ov; setOverlay(tr.dataset.ov); }));
+      $("#eventsTable").querySelectorAll("tr.is-link").forEach((tr) => tr.addEventListener("click", () => { stopPlay(); setOverlay(tr.dataset.ov); }));
     }
     const eq = c.equity; const eb = $("#equityBody");
     if (!eq) eb.innerHTML = `<div class="errata">형평성 감사 미실행</div>`;
@@ -352,10 +392,10 @@
       const key = mod?.overlays?.[s.label] ? s.label : null;
       rail.insertAdjacentHTML("beforeend", `<div class="tick ${s.date ? "" : "miss"}${alt ? " alt" : ""}" style="left:${x}%" data-date="${s.date || ""}" data-label="${s.label ?? ""}"${key ? ` data-ov="${key}"` : ""} title="${s.date || "미관측"}">${s.date || "미관측"}<small>${OV_LABEL[s.label] || s.label || s.year || ""}</small></div>`); });
     rail.querySelectorAll(".tick").forEach((el) => el.addEventListener("click", () => {
-      rail.querySelectorAll(".tick").forEach((x) => x.classList.toggle("is-active", x === el));
-      if (el.dataset.ov) setOverlay(el.dataset.ov);
+      stopPlay();
+      const fk = frameKeys(mod).find((k) => legendOf(mod, k).date === el.dataset.date);
+      if (fk) setOverlay(fk); else if (el.dataset.ov) setOverlay(el.dataset.ov); else highlightSeries(el.dataset.date);
       const sr = (mod?.series || []).find((x) => x.date === el.dataset.date);
-      if (state.chart && mod?.series) { const idx = mod.series.findIndex((x) => x.date === el.dataset.date); state.chart.data.datasets.forEach((d, di) => { if (di === 0 || di === 3) d.pointRadius = mod.series.map((_, i) => (i === idx ? 7 : 3.5)); }); state.chart.update(); }
       if (sr) toast(`${sr.date} ${sr.label ? OV_LABEL[sr.label] || sr.label : ""}: 피해지 NDVI ${sr.burned.median?.toFixed(2) ?? "측정 불가"}, 대조지 ${sr.control.median?.toFixed(2) ?? "측정 불가"}, 회복률 ${sr.recovery_ratio?.toFixed(2) ?? "측정 불가"}`);
     }));
   }

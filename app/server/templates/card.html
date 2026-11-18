@@ -35,6 +35,7 @@
   .foot{margin-top:24px;font-size:11px;color:var(--ink-3);border-top:1px solid var(--rule);padding-top:8px;font-family:var(--marg);letter-spacing:.03em}
   .warn{border:1px solid var(--seal);background:var(--slip);color:var(--seal);padding:8px 12px;font-size:12px}
   details summary{cursor:pointer}
+  .snap{margin:14px 0 4px;break-inside:avoid}.snap img{display:block;width:100%;border:1px solid var(--rule)}.snap figcaption{font-size:11px;color:var(--muted);margin-top:4px}
   @media print{.sheet{margin:0;border:0;padding:0}}
 </style>
 </head>
@@ -54,6 +55,10 @@
   </div>
   {% if card.project.legal_basis %}<div style="font-size:12px;color:var(--muted)">보고 근거: {{ card.project.legal_basis }}</div>{% endif %}
   {% if card.project.description %}<p style="margin:8px 0 0">{{ card.project.description }}</p>{% endif %}
+  <figure class="snap" id="snap"{% if not card.snapshot %} hidden{% endif %}>
+    <img id="snapImg" src="{{ card.snapshot.url if card.snapshot else '' }}" alt="지면 장면">
+    <figcaption id="snapCap">{{ card.snapshot.caption if card.snapshot else '' }}</figcaption>
+  </figure>
 
   {% for m in card.modules %}
   <h2>{{ m.label }}</h2>
@@ -102,5 +107,10 @@
 
   <div class="foot">{{ card.disclaimer }} 자료: Copernicus Sentinel-1/2 (ESA), Landsat 8/9 (USGS) via Microsoft Planetary Computer; 공공데이터포털; 통계청 SGIS.</div>
 </div>
+<script>
+  // 대시보드가 브라우저 저장소에 남긴 장면(읽기 전용 배포본에서는 서버에 저장하지 못한다)
+  (function(){ try { var raw = localStorage.getItem("ar-snap-{{ card.project.id }}"); if (!raw) return; var s = JSON.parse(raw); var f = document.getElementById("snap");
+    if (f.hidden || s.at > "{{ card.snapshot.at if card.snapshot else '' }}") { document.getElementById("snapImg").src = s.img; document.getElementById("snapCap").textContent = s.caption; f.hidden = false; } } catch (e) {} })();
+</script>
 </body>
 </html>

@@ -147,7 +147,9 @@ sequenceDiagram
   - 색 견본·색막대 범례: 서버가 범례를 구조화해 내려 주고(`overlays.legend`) 화면이 견본과 눈금을 그립니다.
   - 클릭 값 조회: 지도 위 한 점을 누르면 그 화소의 등급이나 온도를 띄웁니다. 검증 모듈이 저장한 `layers.npz`를 `/api/projects/{id}/query`가 읽습니다.
   - 전후 비교: 같은 화면을 두 지도로 가르고 손잡이를 끌어 산불 전과 진화 직후, 시공 전후, 정비 전후를 견줍니다.
+  - 시간 순 재생: 산불은 장면별 NDVI(산불 전 숲 화소), 침수는 호우 사건별 범위를 재생 버튼과 지면 아래 타임라인으로 넘깁니다. 회복 단면도의 점이 함께 움직입니다.
   - 관측 눈금 클릭, 호우 사건 표에서 지도로 이동, 한글 지명 우선, 줌 컨트롤과 커서 좌표, 지도와 범례를 PNG로 저장.
+  - 카드 인쇄를 누르면 지금 보이는 지면 장면이 인쇄 카드 머리에 실립니다(`POST /api/projects/{id}/snapshot`, 읽기 전용 배포본은 브라우저 저장소).
 - **영수증**: 오른쪽 난외주기에 감열 프린터가 있고, 카드가 도착하면 영수증이 뽑혀 나오는 3단계 모션(급지 → 절단 → 안착) 뒤 판정 도장이 찍힙니다. 종이 질감·잉크 번짐은 휘도 마스크와 SVG 변위 필터로 구현했습니다.
 - **채팅**: 왼쪽 아래 인장 모양 버튼으로 열고 닫는 떠 있는 패널입니다.
 
@@ -229,6 +231,7 @@ python -m pytest app/tests -q
 | POST | `/api/chat` | 적응영수증.chat |
 | GET | `/api/projects/{id}/overlay/{name}.png` | 지도 오버레이(dnbr, pre, post, lst_*, flood_*, flood_evt_YYYYMMDD) |
 | GET | `/api/projects/{id}/query?layer=&lon=&lat=` | 지도 클릭 지점의 오버레이 값(등급 또는 ℃) |
+| POST / GET | `/api/projects/{id}/snapshot`, `/api/projects/{id}/snapshot.jpg` | 인쇄 카드용 지면 장면 저장·제공(배포본은 저장 503) |
 | GET | `/api/calendar` | 법정 보고 달력 |
 
 사업 JSON 스키마와 외부 API 실측 메모(응답 형식·재시도 조건)는 `app/README.md`에 있습니다.

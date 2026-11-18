@@ -13,6 +13,7 @@ import numpy as np
 
 from . import config, metrics, stac
 from .envelope import metric
+from .overlay_png import NDVI_STOPS, scalar_png
 
 S2 = "sentinel-2-l2a"
 BANDS = ["B02", "B03", "B04", "B08", "B12", "SCL"]
@@ -163,8 +164,18 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
 
     severity_png(cls, None, out_dir / "dnbr.png"); truecolor_png(stack["pre"], out_dir / "pre.png"); truecolor_png(stack["post"], out_dir / "post.png")
     stac.save_json_atomic(out_dir / "scenes.json", {"scenes": scenes, "failed": failed})
-    # 지도 클릭 조회용 격자(표시 범위 bbox에 선형 대응). 0 = 등급 없음
-    stac.save_npz_atomic(out_dir / "layers.npz", bbox=np.array(bbox, dtype="float64"), dnbr=np.nan_to_num(cls, nan=0).astype("uint8"))
+    # 장면별 NDVI 층(회복 시계열 재생용): 숲 밖은 비우고 피해지·대조지 화소만 색을 입힌다
+    u = f"/api/projects/{p['id']}/overlay/"; ndvi_hex = ["#%02x%02x%02x" % c for c in NDVI_STOPS]
+    ndvi_overlays: dict = {}; ndvi_legend: dict = {}; layers = {"bbox": np.array(bbox, dtype="float64"), "dnbr": np.nan_to_num(cls, nan=0).astype("uint8")}
+    for i, lab in enumerate(labels):
+        key = f"ndvi_{i}"; arr = np.where(forest, ndvi[lab], np.nan).astype("float32")
+        scalar_png(arr, out_dir / f"{key}.png", 0.0, 0.9, NDVI_STOPS, alpha=225); layers[key] = arr
+        s_ = next(s for s in scenes if s["label"] == lab); rr = series[i]["recovery_ratio"]
+        ndvi_overlays[key] = u + f"{key}.png"
+        ndvi_legend[key] = {"label": f"{s_['date']} {lab}", "type": "ramp", "query": key, "min": 0.0, "max": 0.9, "unit": "", "stops": ndvi_hex, "series": True, "date": s_["date"],
+                            "note": f"NDVI, 산불 전 숲 화소만. 회복률 {rr:.2f}" if rr is not None else "NDVI, 산불 전 숲 화소만"}
+    # 지도 클릭 조회용 격자(표시 범위 bbox에 선형 대응). dnbr 0 = 등급 없음
+    stac.save_npz_atomic(out_dir / "layers.npz", **layers)
 
     burned_ha = int(round(float(burn.sum()) * px_ha))
     return {
@@ -182,8 +193,8 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
             "valid_pct_min": metric(min(s["valid_pct"] for s in scenes if s.get("valid_pct") is not None), "OBSERVED", "%"),
         },
         "severity": severity, "series": series, "scenes": scenes, "failed": failed,
-        "overlays": {"dnbr": f"/api/projects/{p['id']}/overlay/dnbr.png", "pre": f"/api/projects/{p['id']}/overlay/pre.png", "post": f"/api/projects/{p['id']}/overlay/post.png", "bounds": bbox,
-                     "legend": {"dnbr": {"label": "피해등급", "type": "classes", "query": "dnbr", "items": [{"c": "#f7e26b", "t": "경"}, {"c": "#f29e2e", "t": "중"}, {"c": "#d7301f", "t": "중강"}, {"c": "#7a0177", "t": "강"}], "note": "dNBR 등급, Key & Benson 2006"},
+        "overlays": {"dnbr": f"/api/projects/{p['id']}/overlay/dnbr.png", "pre": f"/api/projects/{p['id']}/overlay/pre.png", "post": f"/api/projects/{p['id']}/overlay/post.png", **ndvi_overlays, "bounds": bbox,
+                     "legend": {**ndvi_legend, "dnbr": {"label": "피해등급", "type": "classes", "query": "dnbr", "items": [{"c": "#f7e26b", "t": "경"}, {"c": "#f29e2e", "t": "중"}, {"c": "#d7301f", "t": "중강"}, {"c": "#7a0177", "t": "강"}], "note": "dNBR 등급, Key & Benson 2006"},
                                 "pre": {"label": "산불 전", "type": "text", "text": f"Sentinel-2 진색 합성 {next((x['date'] for x in scenes if x['label'] == 'pre'), '')}"},
                                 "post": {"label": "진화 직후", "type": "text", "text": f"Sentinel-2 진색 합성 {next((x['date'] for x in scenes if x['label'] == 'post'), '')}"}}},
         "verdict": _verdict(last_ratio, did["effect"], mde, ci),
