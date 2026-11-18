@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<link rel="stylesheet" href="sheet.css?v=14">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<link rel="stylesheet" href="sheet.css?v=15">
 <link rel="stylesheet" href="ink.css?v=5">
 <link rel="stylesheet" href="layout.css?v=7">
 <link rel="stylesheet" href="print3d.css?v=6">
@@ -79,8 +79,9 @@
       </div>
       <div class="plate-tools">
         <div class="seg" role="group" aria-label="바탕">
-          <button class="seg-btn is-active" data-base="map">지형</button>
-          <button class="seg-btn" data-base="sat">영상</button>
+          <button class="seg-btn" data-base="map">지형</button>
+          <button class="seg-btn is-active" data-base="sat">영상</button>
+          <button class="seg-btn seg-3d" id="btn3d" type="button" aria-pressed="true" title="3D 지형과 건물">3D</button>
         </div>
         <div class="seg" id="overlaySeg" role="group" aria-label="오버레이" hidden></div>
         <label class="opacity" id="opacityWrap" hidden><span class="k">투명도</span><input id="opacity" type="range" min="0" max="100" value="85" aria-label="오버레이 불투명도"></label>
@@ -239,9 +240,9 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="dashboard.js?v=11"></script>
+<script src="dashboard.js?v=12"></script>
 <script src="chat.js?v=4"></script>
 </body>
 </html>
