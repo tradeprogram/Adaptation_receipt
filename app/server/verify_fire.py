@@ -87,7 +87,7 @@ def refl(bands: dict[str, np.ndarray], pb: str) -> dict[str, np.ndarray]:
 def severity_png(cls: np.ndarray, rgb: np.ndarray | None, path: Path) -> None:
     """피해등급을 반투명 PNG로 저장(지도 오버레이)."""
     from PIL import Image
-    pal = {1: (233, 207, 156, 200), 2: (196, 138, 62, 215), 3: (138, 90, 30, 230), 4: (74, 42, 18, 240)}   # 등고선 갈색 계열(지형도 문법)
+    pal = {1: (247, 226, 107, 205), 2: (242, 158, 46, 220), 3: (215, 48, 31, 230), 4: (122, 1, 119, 240)}   # dNBR 관행: 노랑, 주황, 빨강, 자주
     h, w = cls.shape
     img = np.zeros((h, w, 4), dtype="uint8")
     for k, c in pal.items():
@@ -183,7 +183,7 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
         },
         "severity": severity, "series": series, "scenes": scenes, "failed": failed,
         "overlays": {"dnbr": f"/api/projects/{p['id']}/overlay/dnbr.png", "pre": f"/api/projects/{p['id']}/overlay/pre.png", "post": f"/api/projects/{p['id']}/overlay/post.png", "bounds": bbox,
-                     "legend": {"dnbr": {"label": "피해등급", "type": "classes", "query": "dnbr", "items": [{"c": "#e9cf9c", "t": "경"}, {"c": "#c48a3e", "t": "중"}, {"c": "#8a5a1e", "t": "중강"}, {"c": "#4a2a12", "t": "강"}], "note": "dNBR 등급, Key & Benson 2006"},
+                     "legend": {"dnbr": {"label": "피해등급", "type": "classes", "query": "dnbr", "items": [{"c": "#f7e26b", "t": "경"}, {"c": "#f29e2e", "t": "중"}, {"c": "#d7301f", "t": "중강"}, {"c": "#7a0177", "t": "강"}], "note": "dNBR 등급, Key & Benson 2006"},
                                 "pre": {"label": "산불 전", "type": "text", "text": f"Sentinel-2 진색 합성 {next((x['date'] for x in scenes if x['label'] == 'pre'), '')}"},
                                 "post": {"label": "진화 직후", "type": "text", "text": f"Sentinel-2 진색 합성 {next((x['date'] for x in scenes if x['label'] == 'post'), '')}"}}},
         "verdict": _verdict(last_ratio, did["effect"], mde, ci),

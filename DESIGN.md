@@ -12,7 +12,7 @@
 |---|---|---|
 | `--paper` / `--paper-2` | #fbfaf6 / #f3f1ea | 종이, 지면 바탕 |
 | `--ink` / `--ink-2` / `--ink-3` | #141414 / #3a3a3a / #6e6a62 | 글·괘선 / 보조 글 / 난외 활자 |
-| `--contour` `--contour-2` `--contour-3` | #8a5a1e #c48a3e #e9cf9c | 등고선 갈색 — 산불 피해·피해등급 음영(경→강: e9cf9c, c48a3e, 8a5a1e, 4a2a12) |
+| `--contour` `--contour-2` `--contour-3` | #8a5a1e #c48a3e #e9cf9c | 등고선 갈색: 피해지 선·차트. 지도 오버레이는 원격탐사 관행 색을 쓴다(dNBR 등급 f7e26b, f29e2e, d7301f, 7a0177; 지표면온도 inferno; 전후 차이 RdBu; 침수 청색) |
 | `--hydro` `--hydro-2` | #1f5e9e #8fb8dd | 수계 청색 — 침수, 링크 |
 | `--veg` `--veg-2` | #2f7d4f #bfe0c5 | 식생 녹색 — 대조지·회복·실측 배지 |
 | `--road` | #c2410c | 도로 주홍 — 열 저감 |
