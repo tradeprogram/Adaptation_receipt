@@ -2,7 +2,7 @@
  "status": "ok",
  "module": "fire",
  "project_id": "fire-uiseong-2025",
- "computed_at": "2026-11-18T18:49:12",
+ "computed_at": "2026-11-18T20:11:00",
  "design": {
   "orbit": "R103",
   "resolution_m": 40.0,
@@ -286,6 +286,11 @@
   "dnbr": "/api/projects/fire-uiseong-2025/overlay/dnbr.png",
   "pre": "/api/projects/fire-uiseong-2025/overlay/pre.png",
   "post": "/api/projects/fire-uiseong-2025/overlay/post.png",
+  "ndvi_0": "/api/projects/fire-uiseong-2025/overlay/ndvi_0.png",
+  "ndvi_1": "/api/projects/fire-uiseong-2025/overlay/ndvi_1.png",
+  "ndvi_2": "/api/projects/fire-uiseong-2025/overlay/ndvi_2.png",
+  "ndvi_3": "/api/projects/fire-uiseong-2025/overlay/ndvi_3.png",
+  "ndvi_4": "/api/projects/fire-uiseong-2025/overlay/ndvi_4.png",
   "bounds": [
    128.45,
    36.26,
@@ -293,6 +298,101 @@
    36.55
   ],
   "legend": {
+   "ndvi_0": {
+    "label": "2025-03-14 pre",
+    "type": "ramp",
+    "query": "ndvi_0",
+    "min": 0.0,
+    "max": 0.9,
+    "unit": "",
+    "stops": [
+     "#a50026",
+     "#f46d43",
+     "#fee08b",
+     "#d9ef8b",
+     "#66bd63",
+     "#006837"
+    ],
+    "series": true,
+    "date": "2025-03-14",
+    "note": "NDVI, 산불 전 숲 화소만. 회복률 0.94"
+   },
+   "ndvi_1": {
+    "label": "2025-04-28 post",
+    "type": "ramp",
+    "query": "ndvi_1",
+    "min": 0.0,
+    "max": 0.9,
+    "unit": "",
+    "stops": [
+     "#a50026",
+     "#f46d43",
+     "#fee08b",
+     "#d9ef8b",
+     "#66bd63",
+     "#006837"
+    ],
+    "series": true,
+    "date": "2025-04-28",
+    "note": "NDVI, 산불 전 숲 화소만. 회복률 0.26"
+   },
+   "ndvi_2": {
+    "label": "2025-07-09 2025 생장기",
+    "type": "ramp",
+    "query": "ndvi_2",
+    "min": 0.0,
+    "max": 0.9,
+    "unit": "",
+    "stops": [
+     "#a50026",
+     "#f46d43",
+     "#fee08b",
+     "#d9ef8b",
+     "#66bd63",
+     "#006837"
+    ],
+    "series": true,
+    "date": "2025-07-09",
+    "note": "NDVI, 산불 전 숲 화소만. 회복률 0.46"
+   },
+   "ndvi_3": {
+    "label": "2026-06-12 2026 생장기",
+    "type": "ramp",
+    "query": "ndvi_3",
+    "min": 0.0,
+    "max": 0.9,
+    "unit": "",
+    "stops": [
+     "#a50026",
+     "#f46d43",
+     "#fee08b",
+     "#d9ef8b",
+     "#66bd63",
+     "#006837"
+    ],
+    "series": true,
+    "date": "2026-06-12",
+    "note": "NDVI, 산불 전 숲 화소만. 회복률 0.84"
+   },
+   "ndvi_4": {
+    "label": "2026-10-10 2026 생장기 말",
+    "type": "ramp",
+    "query": "ndvi_4",
+    "min": 0.0,
+    "max": 0.9,
+    "unit": "",
+    "stops": [
+     "#a50026",
+     "#f46d43",
+     "#fee08b",
+     "#d9ef8b",
+     "#66bd63",
+     "#006837"
+    ],
+    "series": true,
+    "date": "2026-10-10",
+    "note": "NDVI, 산불 전 숲 화소만. 회복률 0.75"
+   },
    "dnbr": {
     "label": "피해등급",
     "type": "classes",

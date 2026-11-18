@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
-<link rel="stylesheet" href="sheet.css?v=15">
+<link rel="stylesheet" href="sheet.css?v=16">
 <link rel="stylesheet" href="ink.css?v=5">
 <link rel="stylesheet" href="layout.css?v=7">
 <link rel="stylesheet" href="print3d.css?v=6">
@@ -88,9 +88,11 @@
         <div class="seg" id="mapActions" hidden>
           <button class="seg-btn" id="btnCompare" type="button" aria-pressed="false">전후 비교</button>
           <button class="seg-btn" id="btnExport" type="button">지도 저장</button>
+          <button class="seg-btn" id="btnPlay" type="button" aria-pressed="false" hidden>재생</button>
         </div>
       </div>
       <div class="legend" id="legend" hidden></div>
+      <div class="timeline" id="timeline" hidden></div>
       <div class="map-loading" id="mapLoading" hidden><span>불러오는 중</span></div>
       <div class="scalebar" id="scalebar"><i></i><span class="num" id="scalebarText">—</span><span class="num cursor-pos" id="cursorPos"></span></div>
     </section>
@@ -242,7 +244,7 @@
 
 <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="dashboard.js?v=12"></script>
+<script src="dashboard.js?v=14"></script>
 <script src="chat.js?v=4"></script>
 </body>
 </html>

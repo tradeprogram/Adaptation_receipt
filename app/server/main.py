@@ -178,6 +178,39 @@ def overlay(pid: str, name: str):
     return FileResponse(p, media_type="image/png", headers={"Cache-Control": "no-store"})
 
 
+class Snapshot(BaseModel):
+    image: str
+    caption: str = ""
+
+
+@app.post("/api/projects/{pid}/snapshot")
+def save_snapshot(pid: str, body: Snapshot):
+    """대시보드가 찍은 3D 지면 장면(JPEG data URL)을 결과 폴더에 저장한다. 인쇄 카드가 이 그림을 싣는다."""
+    import base64
+    get_project(pid)
+    if config.READ_ONLY:
+        raise HTTPException(503, "읽기 전용 배포본에서는 장면을 저장하지 않는다. 브라우저 저장소의 장면으로 인쇄한다.")
+    head, _, data = body.image.partition(",")
+    if not head.startswith("data:image/jpeg"):
+        raise HTTPException(400, "jpeg data url required")
+    raw = base64.b64decode(data)
+    if len(raw) > 4_000_000:
+        raise HTTPException(413, "too large")
+    d = config.RESULTS_DIR / pid; d.mkdir(parents=True, exist_ok=True)
+    tmp = d / "snapshot.jpg.tmp"; tmp.write_bytes(raw); tmp.replace(d / "snapshot.jpg")
+    from .fsutil import save_json_atomic
+    save_json_atomic(d / "snapshot.json", {"caption": body.caption, "at": dt.datetime.now().isoformat(timespec="seconds")})
+    return ok({"saved": True})
+
+
+@app.get("/api/projects/{pid}/snapshot.jpg")
+def get_snapshot(pid: str):
+    path = config.RESULTS_DIR / pid / "snapshot.jpg"
+    if not path.exists():
+        raise HTTPException(404, "no snapshot")
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-cache"})
+
+
 _layers_cache: dict[str, dict] = {}
 
 

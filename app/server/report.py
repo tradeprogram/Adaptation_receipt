@@ -49,7 +49,13 @@ def build_card(project: dict, results: dict[str, dict | None], equity: dict | No
     eq = None
     if equity is not None:
         eq = {"status": equity["status"], "warnings": equity["warnings"], "data": equity["data"]}
-    return {"project": {k: project.get(k) for k in ("id", "name", "type", "agency", "region", "budget_krw", "period", "legal_basis", "description", "event_date", "contained_date", "geometry", "kma_station")},
+    snap = None
+    sp = config.RESULTS_DIR / project["id"] / "snapshot.json"
+    if sp.exists() and (config.RESULTS_DIR / project["id"] / "snapshot.jpg").exists():
+        import json as _json
+        meta = _json.loads(sp.read_text(encoding="utf-8"))
+        snap = {"url": f"/api/projects/{project['id']}/snapshot.jpg", "caption": meta.get("caption", ""), "at": meta.get("at", "")}
+    return {"snapshot": snap, "project": {k: project.get(k) for k in ("id", "name", "type", "agency", "region", "budget_krw", "period", "legal_basis", "description", "event_date", "contained_date", "geometry", "kma_station")},
             "generated_at": dt.datetime.now().isoformat(timespec="seconds"), "modules": modules, "equity": eq,
             "badges": BADGE_LABEL, "disclaimer": "모든 수치에는 출처 배지가 붙는다. 측정 불가는 표본 부족이나 관측 공백을 뜻하며 0이 아니다. 미검출은 효과가 없다는 증명이 아니다."}
 
