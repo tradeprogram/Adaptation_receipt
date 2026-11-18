@@ -34,7 +34,7 @@
   map.addControl(new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }), "top-right");
   // 3D 지형: AWS 공개 지형 타일(terrarium, 키 불필요). 같은 버킷의 주소 셋으로 나눠 동시 요청 수를 늘린다
   const TERRAIN = { type: "raster-dem", tiles: ["https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png", "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png", "https://elevation-tiles-prod.s3.us-east-1.amazonaws.com/terrarium/{z}/{x}/{y}.png"], tileSize: 256, encoding: "terrarium", maxzoom: 15, attribution: "Terrain: Mapzen, AWS" };
-  const EXAGG = 1.2, PITCH3D = 52, BEARING3D = -18;
+  const EXAGG = 1.2, PITCH3D = 58, BEARING3D = -18;
   const is3D = () => $("#btn3d").getAttribute("aria-pressed") === "true";
   // 종이 세계관의 하늘: 회청색 하늘, 종이빛 지평선과 안개, 오후의 낮은 햇빛(건물 옆면에 음영)
   const dressMap = (m, buildings = true) => {
@@ -103,7 +103,7 @@
   function flyToBbox(b, duration) {
     const cam = map.cameraForBounds([[b[0], b[1]], [b[2], b[3]]], { padding: { top: 64, bottom: 96, left: 28, right: 28 }, ...camOpts() });
     if (!cam) return;
-    if (is3D()) cam.zoom += 0.5;
+    if (is3D()) cam.zoom += 0.3;
     map.easeTo({ ...cam, ...camOpts(), duration, essential: true });
   }
   function drawAois() {
@@ -518,7 +518,6 @@
     if (!map.getSource("draw")) { map.addSource("draw", { type: "geojson", data: { type: "FeatureCollection", features: [] } }); map.addLayer({ id: "draw-line", type: "line", source: "draw", paint: { "line-color": "#b3261e", "line-width": 2, "line-dasharray": [2, 2] } }); map.addLayer({ id: "draw-fill", type: "fill", source: "draw", paint: { "fill-color": "#b3261e", "fill-opacity": 0.08 } }); }
     map.getSource("tc").setData({ type: "FeatureCollection", features: [] }); map.getSource("pts").setData({ type: "FeatureCollection", features: [] });
     if (map.getLayer("overlay")) { map.removeLayer("overlay"); map.removeSource("overlay"); } $("#legend").hidden = true; $("#timeline").hidden = true; $("#overlaySeg").hidden = true; $("#opacityWrap").hidden = true; $("#mapActions").hidden = true;
-    if (is3D()) { $("#btn3d").setAttribute("aria-pressed", "false"); apply3D(map, false); map.easeTo({ pitch: 0, bearing: 0, duration: 600 }); }
   });
   const closeReg = () => { state.reg = null; reg.form.hidden = true; $("#cardEmpty").hidden = !!state.card; $("#card").hidden = !state.card; if (map.getSource("draw")) map.getSource("draw").setData({ type: "FeatureCollection", features: [] }); map.dragPan.enable(); map.getCanvas().style.cursor = ""; if (state.current) selectProject(state.current); };
   $("#regClose").addEventListener("click", closeReg);
