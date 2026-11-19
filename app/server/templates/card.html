@@ -50,7 +50,7 @@
   {% set code = m0.verdict.code if m0 else 'not_run' %}
   <div class="head">
     <div><div class="k">적응 영수증, 도엽번호 {{ card.project.id }}</div><h1>{{ card.project.name }}</h1><div class="k" style="text-transform:none;letter-spacing:.04em">기후적응 사업 성과와 형평성 검증 카드, 조제 {{ card.generated_at }}</div></div>
-    <div class="stamp {{ 'neutral' if code in ['not_run','waiting_input','unmeasured','waiting'] else code }}"><b>{{ {'detected':'효과 검출','recovered':'대조지 수준 회복','gap_remaining':'회복 격차 잔존','undetected':'미검출','unmeasured':'측정 불가','ready':'2단계 가능','waiting':'대기','waiting_input':'입력 대기','not_run':'미실행','failed':'실패','reduced':'침수 범위 감소','not_reduced':'침수 범위 미감소'}.get(code, code) }}</b><span>{{ (m0.computed_at or '')[:10] if m0 else '' }} 검정</span></div>
+    <div class="stamp {{ 'neutral' if code in ['not_run','waiting_input','unmeasured','waiting'] else code }}"><b>{{ card.plain_verdict.get(code, code) }}</b><span>{{ (m0.computed_at or '')[:10] if m0 else '' }} 검정</span></div>
   </div>
   <div class="meta">
     <div><b>집행 주체</b>{{ card.project.agency or "—" }}</div>
@@ -71,7 +71,7 @@
   <div class="sum">
     <div class="sum-head">{{ s.headline }}</div>
     {% if s.explain %}<p class="sum-text">{{ s.explain }}</p>{% endif %}
-    {% if s.key %}<div class="keynums">{% for k in s.key %}<div><b>{% if k.value is none %}자료 부족{% else %}{% if k.signed and k.value > 0 %}+{% endif %}{{ "{:,}".format(k.value) }}{% if k.unit %} <small>{{ k.unit }}</small>{% endif %}{% endif %}</b><span>{{ k.label }}</span></div>{% endfor %}</div>{% endif %}
+    {% if s.key %}<div class="keynums">{% for k in s.key %}<div><b>{% if k.value is none %}측정 불가{% else %}{% if k.signed and k.value > 0 %}+{% endif %}{{ "{:,}".format(k.value) }}{% if k.unit %} <small>{{ k.unit }}</small>{% endif %}{% endif %}</b><span>{{ k.label }}</span></div>{% endfor %}</div>{% endif %}
     {% if s.next %}<div class="next"><b>다음에 할 일</b><ol>{% for n in s.next %}<li>{{ n }}</li>{% endfor %}</ol></div>{% endif %}
   </div>
   <div class="verdict {{ m.verdict.code }}"><b>판정 {{ s.verdict_plain }}</b> {{ m.verdict.text }}</div>

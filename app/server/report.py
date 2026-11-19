@@ -33,9 +33,10 @@ def fmt(v, unit: str = "") -> str:
     return str(v)
 
 
-PLAIN_VERDICT = {"detected": "효과 확인", "recovered": "주변 수준으로 회복", "gap_remaining": "아직 덜 회복", "reduced": "침수 줄어듦", "not_reduced": "침수 줄지 않음",
-                 "undetected": "효과 확인 안 됨", "unmeasured": "자료 부족", "ready": "비교 가능", "waiting": "자료 기다리는 중", "waiting_input": "입력 필요",
-                 "not_run": "검정 전", "failed": "실패", "partial": "부분 완료", "ok": "완료"}
+# 도장과 표에 찍는 판정 라벨. 공문서 관행대로 명사형 한자어로 적고, 풀어 쓴 설명은 요약 문장이 맡는다
+PLAIN_VERDICT = {"detected": "효과 확인", "recovered": "회복 수준 도달", "gap_remaining": "회복 미달", "reduced": "침수 저감 확인", "not_reduced": "침수 저감 미확인",
+                 "undetected": "효과 미확인", "unmeasured": "측정 불가", "ready": "비교 가능", "waiting": "관측 대기", "waiting_input": "입력 대기",
+                 "not_run": "미검정", "failed": "검정 실패", "partial": "부분 완료", "ok": "완료"}
 # 화면과 인쇄 카드에 적는 항목 이름. 기술 키는 JSON에 남는다
 PLAIN_KEY = {
     "burned_forest_ha": "피해 산림 면적", "control_ha": "비교 구역(주변 숲) 면적", "recovery_ratio_latest": "회복률(피해지 ÷ 주변 숲)", "did_effect_ndvi": "주변 숲 대비 변화(식생지수)",

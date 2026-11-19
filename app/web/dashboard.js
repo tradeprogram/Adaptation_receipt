@@ -5,7 +5,7 @@
   const TYPE_LABEL = { fire: "산불 피해지 복원", heat: "옥상 차열(열 저감)", flood: "배수 정비(침수 방재)" };
   const TYPE_CODE = { fire: "FIRE", heat: "HEAT", flood: "FLOOD" };
   // 화면에는 쉬운 말만 적는다. 기술 용어(이중차분, dNBR 등)는 '자세한 수치와 근거'와 JSON에 남긴다
-  const VERDICT = { detected: "효과 확인", recovered: "주변 수준으로 회복", gap_remaining: "아직 덜 회복", reduced: "침수 줄어듦", not_reduced: "침수 줄지 않음", undetected: "효과 확인 안 됨", unmeasured: "자료 부족", ready: "비교 가능", waiting: "자료 기다리는 중", waiting_input: "입력 필요", not_run: "검정 전", failed: "실패", partial: "부분 완료", ok: "완료", done: "완료", queued: "대기", running: "진행" };
+  const VERDICT = { detected: "효과 확인", recovered: "회복 수준 도달", gap_remaining: "회복 미달", reduced: "침수 저감 확인", not_reduced: "침수 저감 미확인", undetected: "효과 미확인", unmeasured: "측정 불가", ready: "비교 가능", waiting: "관측 대기", waiting_input: "입력 대기", not_run: "미검정", failed: "검정 실패", partial: "부분 완료", ok: "완료", done: "완료", queued: "대기", running: "진행" };
   const SRC = { OBSERVED: "실측", MODEL: "계산", RULE: "규칙", ASSUMPTION: "가정", FORECAST: "예보" };
   const OV_LABEL = { dnbr: "피해등급", pre: "산불 전", post: "진화 직후", lst_before: "시공 전 온도", lst_after: "시공 후 온도", lst_diff: "전후 차이", flood_before: "정비 전 침수", flood_after: "정비 후 침수", flood_change: "전후 비교", none: "없음" };
   const PAIRS = [["pre", "post", "산불 전", "진화 직후"], ["lst_before", "lst_after", "시공 전", "시공 후"], ["flood_before", "flood_after", "정비 전", "정비 후"]];
@@ -484,7 +484,7 @@
   document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => showView(b.dataset.view)));
 
   // ---------- 담당자 요약(쉬운 말) ----------
-  const fmtKey = (k) => k.value == null ? `<b class="none">자료 부족</b>` : `<b>${k.signed && k.value > 0 ? "+" : ""}${k.value.toLocaleString("ko-KR")}${k.unit ? `<small>${k.unit}</small>` : ""}</b>`;
+  const fmtKey = (k) => k.value == null ? `<b class="none">측정 불가</b>` : `<b>${k.signed && k.value > 0 ? "+" : ""}${k.value.toLocaleString("ko-KR")}${k.unit ? `<small>${k.unit}</small>` : ""}</b>`;
   function renderSummary(mod) {
     const s = mod.summary || {}; $("#sumHead").textContent = s.headline || VERDICT[mod.verdict?.code] || ""; $("#sumText").textContent = s.explain || ""; $("#sumText").hidden = !s.explain;
     $("#keyNums").innerHTML = (s.key || []).map((k) => `<div class="keynum">${fmtKey(k)}<span>${k.label}</span></div>`).join(""); $("#keyNums").hidden = !(s.key || []).length;
@@ -503,7 +503,7 @@
     const none = rows.length - good - bad;
     const budget = rows.reduce((a, r) => a + (r.c.project.budget_krw || 0), 0);
     const next = state.calendar?.slice().sort((a, b) => a.days_left - b.days_left)[0];
-    kpi.innerHTML = `<div><b>${rows.length}</b><span>검정한 사업</span></div><div><b class="ok">${good}</b><span>효과 확인</span></div><div><b class="warn">${bad}</b><span>효과 미확인 또는 미흡</span></div><div><b>${none}</b><span>자료 부족·검정 전</span></div><div><b>${budget ? (budget / 1e8).toLocaleString("ko-KR", { maximumFractionDigits: 0 }) : "—"}<small>억 원</small></b><span>예산 합계(기재분)</span></div>${next ? `<div><b>D-${next.days_left}</b><span>${next.name}</span></div>` : ""}`;
+    kpi.innerHTML = `<div><b>${rows.length}</b><span>검정한 사업</span></div><div><b class="ok">${good}</b><span>효과 확인</span></div><div><b class="warn">${bad}</b><span>효과 미확인 또는 미달</span></div><div><b>${none}</b><span>측정 불가 또는 미검정</span></div><div><b>${budget ? (budget / 1e8).toLocaleString("ko-KR", { maximumFractionDigits: 0 }) : "—"}<small>억 원</small></b><span>예산 합계(기재분)</span></div>${next ? `<div><b>D-${next.days_left}</b><span>${next.name}</span></div>` : ""}`;
     tb.innerHTML = `<tr><th>사업</th><th>종류</th><th>기간</th><th class="num">예산</th><th>결론</th><th>핵심 수치</th><th>다음에 할 일</th></tr>` + rows.map((r) => {
       const p = r.c.project; const k = (r.s.key || []).filter((x) => x.value != null).slice(0, 2).map((x) => `${x.label} ${x.signed && x.value > 0 ? "+" : ""}${x.value.toLocaleString("ko-KR")}${x.unit ? " " + x.unit : ""}`).join(", ");
       return `<tr class="is-link" data-id="${p.id}"><td><b>${p.name}</b><span class="sub">${p.agency || ""}${p.region ? ", " + p.region : ""}</span></td><td>${TYPE_LABEL[p.type]}</td><td>${p.period || ""}</td><td class="num">${p.budget_krw ? (p.budget_krw / 1e8).toLocaleString("ko-KR", { maximumFractionDigits: 1 }) + "억" : "—"}</td><td><span class="mark ${code(r)}">${VERDICT[code(r)] || code(r)}</span><span class="sub">${r.s.headline || ""}</span></td><td>${k}</td><td>${(r.s.next || [])[0] || ""}</td></tr>`; }).join("");
