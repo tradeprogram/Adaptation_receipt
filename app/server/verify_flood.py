@@ -167,23 +167,40 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
         out_dir = config.RESULTS_DIR / p["id"]; out_dir.mkdir(parents=True, exist_ok=True)
         shape = next(a for a in union.values() if a is not None).shape
         pz = perm_any if perm_any is not None else np.zeros(shape, bool)
-        u = f"/api/projects/{p['id']}/overlay/"; overlays = {"bounds": bbox, "legend": {}}; layers = {"bbox": np.array(bbox, dtype="float64")}
-        items2 = [{"c": "#1f5aa0", "t": "침수 추정"}, {"c": "#787878", "t": "상시 수역"}]
+        u = f"/api/projects/{p['id']}/overlay/"; overlays = {"bounds": bbox, "legend": {}, "default": "flood_change", "opacity": 1.0}; layers = {"bbox": np.array(bbox, dtype="float64")}
+        # 침수 화소가 모인 곳으로 카메라를 보낸다. 전체 범위에서는 수십 ha가 점으로만 보인다
+        anym = np.zeros(shape, bool)
+        for ph in ("before", "after"):
+            if union[ph] is not None: anym |= union[ph]
+        if anym.any():
+            # 침수 화소는 범위 전체에 흩어지므로, 가장 많이 모인 창(전체의 약 1/3)을 찾아 그곳을 초점으로 삼는다
+            h_, w_ = anym.shape; gh = gw = 24; bh, bw = max(1, h_ // gh), max(1, w_ // gw)
+            g = anym[:bh * gh, :bw * gw].reshape(gh, bh, gw, bw).sum(axis=(1, 3)); k = 8
+            best, bi, bj = -1, 0, 0
+            for i in range(gh - k + 1):
+                for j in range(gw - k + 1):
+                    s_ = int(g[i:i + k, j:j + k].sum())
+                    if s_ > best: best, bi, bj = s_, i, j
+            lon0 = bbox[0] + (bbox[2] - bbox[0]) * bj / gw; lon1 = bbox[0] + (bbox[2] - bbox[0]) * (bj + k) / gw
+            lat1 = bbox[3] - (bbox[3] - bbox[1]) * bi / gh; lat0 = bbox[3] - (bbox[3] - bbox[1]) * (bi + k) / gh
+            overlays["focus"] = [round(float(lon0), 5), round(float(lat0), 5), round(float(lon1), 5), round(float(lat1), 5)]
+            overlays["focus_share"] = round(best / float(anym.sum()), 2)
+        items2 = [{"c": "#154ea0", "t": "침수 추정"}, {"c": "#828282", "t": "상시 수역"}]
         rule = "위성 레이더(Sentinel-1)가 잔잔한 물로 판독한 화소"
         for ph, lab in (("before", "정비 전"), ("after", "정비 후")):
             if union[ph] is not None:
                 cls = np.where(union[ph], 1, np.where(pz, 2, 0)).astype("uint8"); layers[f"flood_{ph}"] = cls
-                class_png(cls, out_dir / f"flood_{ph}.png", FLOOD_PALETTE); overlays[f"flood_{ph}"] = u + f"flood_{ph}.png"
+                class_png(cls, out_dir / f"flood_{ph}.png", FLOOD_PALETTE, dilate=(1,)); overlays[f"flood_{ph}"] = u + f"flood_{ph}.png"
                 overlays["legend"][f"flood_{ph}"] = {"label": f"{lab} 침수", "type": "classes", "query": f"flood_{ph}", "items": items2, "note": f"{lab} 호우 사건의 합집합. {rule}"}
         if union["before"] is not None and union["after"] is not None:
             cls = np.where(union["before"] & union["after"], 3, np.where(union["before"], 1, np.where(union["after"], 2, np.where(pz, 4, 0)))).astype("uint8"); layers["flood_change"] = cls
-            class_png(cls, out_dir / "flood_change.png", CHANGE_PALETTE); overlays["flood_change"] = u + "flood_change.png"
-            overlays["legend"]["flood_change"] = {"label": "전후 비교", "type": "classes", "query": "flood_change", "items": [{"c": "#1f5aa0", "t": "정비 전에만 침수"}, {"c": "#a02c1e", "t": "정비 후에만 침수"}, {"c": "#46286e", "t": "두 시기 모두"}, {"c": "#787878", "t": "상시 수역"}], "note": "같은 화소를 정비 전후로 비교"}
+            class_png(cls, out_dir / "flood_change.png", CHANGE_PALETTE, dilate=(1, 2, 3)); overlays["flood_change"] = u + "flood_change.png"
+            overlays["legend"]["flood_change"] = {"label": "전후 비교", "type": "classes", "query": "flood_change", "items": [{"c": "#154ea0", "t": "정비 전에만 침수"}, {"c": "#be1828", "t": "정비 후에만 침수"}, {"c": "#5a2882", "t": "두 시기 모두"}, {"c": "#828282", "t": "상시 수역"}], "note": "같은 화소를 정비 전후로 비교"}
         # 사건별 침수 범위
         for o, fl in evt_masks:
             d = o["event_peak"][:10]; key = "flood_evt_" + d.replace("-", "")
             cls = np.where(fl, 1, np.where(pz, 2, 0)).astype("uint8"); layers[key] = cls
-            class_png(cls, out_dir / f"{key}.png", FLOOD_PALETTE); overlays[key] = u + f"{key}.png"
+            class_png(cls, out_dir / f"{key}.png", FLOOD_PALETTE, dilate=(1,)); overlays[key] = u + f"{key}.png"
             r_ = o.get("rain") or {}; s2 = o.get("stage2") or {}
             overlays["legend"][key] = {"label": f"{d} 호우", "type": "classes", "query": key, "items": items2, "event": True,
                                        "note": f"{'정비 전' if o['phase'] == 'before' else '정비 후'}, 최대 3시간 강우 {r_.get('max_3h', 0):.0f} mm, 정점 {s2.get('hours_after_peak', 0):.0f}시간 뒤 관측, 침수 추정 {s2.get('flooded_ha', 0):,.0f} ha"}
@@ -197,10 +214,10 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
         "metrics": {
             "events_total": metric(len(out), "OBSERVED", "건", note=f"기상청 자동 추출 {n_auto}건 + 수기 {len(out) - n_auto}건"),
             "grade_counts": metric(counts, "RULE", "건", note="관측 지연시간 규칙 판정"),
-            "stage2_ready": metric(ready, "RULE", "", note="정비 전과 후에 위성으로 확인 가능한 사건이 각 1건 이상이면 침수 범위를 비교한다"),
+            "stage2_ready": metric(ready, "RULE", "", note="정비 전과 후에 위성 관측 가능 사건 각 1건 이상일 때 침수 범위 비교"),
             "flooded_ha_before": metric(ha_b, "MODEL", "ha", n=sum(1 for o in ab if o["phase"] == "before" and o.get("stage2", {}).get("flooded_ha") is not None), note="정비 전 A/B 사건 침수 추정 범위 합집합(상시 수역 제외)"),
             "flooded_ha_after": metric(ha_a, "MODEL", "ha", n=sum(1 for o in ab if o["phase"] == "after" and o.get("stage2", {}).get("flooded_ha") is not None), note="정비 후 A/B 사건 침수 추정 범위 합집합"),
-            "flooded_change_ha": metric(change_ha, "MODEL", "ha", note="정비 후에서 정비 전을 뺀 값. 강우 강도 차이는 보정하지 않았다"),
+            "flooded_change_ha": metric(change_ha, "MODEL", "ha", note="정비 후에서 정비 전을 뺀 값, 강우 강도 차이 미보정"),
             "flooded_change_pct": metric(change_pct, "MODEL", "%", note="정비 전 대비 변화율"),
             "flooded_ha_per_mm_before": metric(hpm_b, "MODEL", "ha/mm", n=sum(1 for o in ab if o["phase"] == "before" and o.get("ha_per_mm") is not None), note="정비 전 사건의 침수 ha를 최대 3시간 강우로 나눈 값"),
             "flooded_ha_per_mm_after": metric(hpm_a, "MODEL", "ha/mm", n=sum(1 for o in ab if o["phase"] == "after" and o.get("ha_per_mm") is not None), note="정비 후 사건의 침수 ha를 최대 3시간 강우로 나눈 값"),
@@ -209,10 +226,10 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
         "overlays": overlays,
         "events": out, "failed": failed,
         "verdict": _verdict(ready, ha_b, ha_a, change_pct, ab, hpm_b, hpm_a, norm_pct),
-        "limitations": ["관측가능성은 위성 통과 시각 기준이다.",
-                        "침수 범위는 첫 통과 시점의 수면만 잡는다. 정점 후 2~3일이 지난 B등급 사건은 물이 빠진 구역을 놓칠 수 있다.",
-                        "VV 임계는 잔잔한 수면 기준이다. 거친 수면과 침수 작물은 과소, 평탄한 포장면은 과대 추정될 수 있다.",
-                        "정비 전후 사건의 강우 강도가 다르므로 범위 변화는 사업 효과만의 값이 아니다."],
+        "limitations": ["관측 가능성은 위성 통과 시각 기준",
+                        "침수 범위는 첫 통과 시점 수면만 포착, 정점 뒤 2~3일 지난 B등급 사건은 배수 완료 구역 누락",
+                        "레이더 판독 기준은 잔잔한 수면 기준, 거친 수면과 침수 작물은 과소, 평탄한 포장면은 과대 추정",
+                        "정비 전후 강우 강도 차이로 범위 변화에 호우 강도 효과 혼재"],
     }
 
 
@@ -220,12 +237,12 @@ def _verdict(ready: bool, ha_b, ha_a, change_pct, ab: list[dict], hpm_b=None, hp
     if ha_b is not None and ha_a is not None:
         rb = max([(o.get("rain") or {}).get("max_3h", 0) for o in ab if o["phase"] == "before"] or [0])
         ra = max([(o.get("rain") or {}).get("max_3h", 0) for o in ab if o["phase"] == "after"] or [0])
-        rain = f" 최대 3시간 강우는 정비 전 {rb:.0f} mm, 정비 후 {ra:.0f} mm였다." if (rb or ra) else ""
-        adj = f" 강우량당 침수 면적은 {hpm_b:.2f}에서 {hpm_a:.2f} ha/mm로 바뀌었다({norm_pct:+.0f}%)." if (hpm_b is not None and hpm_a is not None and norm_pct is not None) else ""
+        rain = f" 최대 3시간 강우 정비 전 {rb:.0f} mm, 정비 후 {ra:.0f} mm." if (rb or ra) else ""
+        adj = f" 강우량당 침수 면적 {hpm_b:.2f}에서 {hpm_a:.2f} ha/mm로 변화({norm_pct:+.0f}%)." if (hpm_b is not None and hpm_a is not None and norm_pct is not None) else ""
         key_pct = norm_pct if norm_pct is not None else change_pct
         if key_pct is not None and key_pct <= -10:
-            return {"code": "reduced", "text": f"침수 추정 범위가 정비 전 {ha_b:,.0f} ha에서 정비 후 {ha_a:,.0f} ha로 줄었다({change_pct:+.0f}%).{adj}{rain}"}
-        return {"code": "not_reduced", "text": f"침수 추정 범위는 정비 전 {ha_b:,.0f} ha, 정비 후 {ha_a:,.0f} ha로 감소를 확인하지 못했다({change_pct:+.0f}%).{adj}{rain}"}
+            return {"code": "reduced", "text": f"침수 추정 범위 정비 전 {ha_b:,.0f} ha, 정비 후 {ha_a:,.0f} ha로 감소({change_pct:+.0f}%).{adj}{rain}"}
+        return {"code": "not_reduced", "text": f"침수 추정 범위 정비 전 {ha_b:,.0f} ha, 정비 후 {ha_a:,.0f} ha로 감소 미확인({change_pct:+.0f}%).{adj}{rain}"}
     if ready:
-        return {"code": "ready", "text": "정비 전후 모두 위성으로 확인 가능한 사건이 있으나 한쪽 시기의 침수 범위를 산출하지 못했다."}
-    return {"code": "waiting", "text": "정비 전 또는 후에 위성으로 확인 가능한 사건이 없어 침수 범위를 비교하지 않는다."}
+        return {"code": "ready", "text": "정비 전후 모두 위성 관측 가능 사건 확보, 한쪽 시기의 침수 범위 산출 실패."}
+    return {"code": "waiting", "text": "정비 전 또는 후에 위성 관측 가능 사건 부재, 침수 범위 비교 미실시."}

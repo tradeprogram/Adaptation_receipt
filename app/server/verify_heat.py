@@ -128,29 +128,29 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
                    "treated_px": int(tmask.sum()), "control_px": int(cmask.sum()), "context_bbox": ctx, "control_sd_c": (round(sd_c, 3) if sd_c else None)},
         "overlays": overlays,
         "metrics": {
-            "did_effect_lst_c": metric(did["effect"], "MODEL", "℃", n=did["n"].get("treat_post"), note=did["reason"] or "(시공 후-전)-(대조 후-전), 여름 장면 중앙값"),
+            "did_effect_lst_c": metric(did["effect"], "MODEL", "℃", n=did["n"].get("treat_post"), note=did["reason"] or "시공 동 변화에서 비교 동 변화를 뺀 값, 여름 장면 중앙값"),
             "medians": metric(did.get("medians"), "OBSERVED", "℃"),
             "ci95": metric(list(ci) if ci else None, "MODEL", "℃"),
-            "mde_c": metric(mde, "ASSUMPTION", "℃", note="독립 화소 가정 근사"),
+            "mde_c": metric(mde, "ASSUMPTION", "℃", note="화소 독립 가정의 근사치"),
             "scenes_used": metric(len(scenes), "OBSERVED", "장면"),
-            "treated_area_ha": metric(round(int(tmask.sum()) * px_ha, 2), "OBSERVED", "ha", n=int(tmask.sum()), note="처리 폴리곤이 덮는 30 m 화소 면적"),
-            "area_for_mde_1c_ha": metric(area_1c, "ASSUMPTION", "ha", note="이 대조 분산에서 1℃ 효과를 검출하려면 필요한 처리 면적(독립 화소 가정, 80% 검정력)"),
-            "area_for_mde_05c_ha": metric(area_05c, "ASSUMPTION", "ha", note="0.5℃ 효과를 검출하려면 필요한 처리 면적"),
+            "treated_area_ha": metric(round(int(tmask.sum()) * px_ha, 2), "OBSERVED", "ha", n=int(tmask.sum()), note="시공 동이 덮는 30 m 화소 면적"),
+            "area_for_mde_1c_ha": metric(area_1c, "ASSUMPTION", "ha", note="같은 비교 동 분산에서 1℃ 효과를 확인하는 데 필요한 시공 면적, 검정력 80%"),
+            "area_for_mde_05c_ha": metric(area_05c, "ASSUMPTION", "ha", note="0.5℃ 효과를 확인하는 데 필요한 시공 면적"),
             "shelters_in_aoi": metric(sh["in_bbox"] if sh else None, "OBSERVED", "곳", n=sh["total"] if sh else None, note="행정안전부 무더위쉼터 가운데 분석 범위 안" if sh else "무더위쉼터 자료 없음"),
-            "shelter_capacity_in_aoi": metric(sh["capacity_sum"] if sh else None, "OBSERVED", "명", note="AOI 안 쉼터 이용가능인원 합"),
+            "shelter_capacity_in_aoi": metric(sh["capacity_sum"] if sh else None, "OBSERVED", "명", note="범위 안 쉼터의 이용 가능 인원 합"),
         },
         "shelters": (sh or {}).get("items", [])[:50],
         "scenes": scenes, "failed": failed, "verdict": _verdict(did["effect"], mde, ci),
-        "limitations": ["30 m 해상도에서 단일 동의 효과는 검출되기 어렵다. 블록 단위 폴리곤을 권장한다.",
-                        "Landsat은 오전에 통과하므로 야간 열섬은 보지 못한다.", "지표면온도는 기온이나 실내온도가 아니다."],
+        "limitations": ["30 m 해상도에서 단일 동 효과 식별 곤란, 블록 단위 검정 권장",
+                        "Landsat 오전 통과로 야간 열섬 미관측", "지표면온도는 기온 및 실내 온도와 상이"],
     }
 
 
 def _verdict(effect, mde, ci) -> dict:
     if effect is None:
-        return {"code": "unmeasured", "text": "전후 또는 처리와 대조 집단에 관측이 없어 판정하지 않는다."}
+        return {"code": "unmeasured", "text": "시공 전후 또는 시공 동과 비교 동 가운데 관측 결측, 판정 보류."}
     if mde is not None and abs(effect) < mde:
-        return {"code": "undetected", "text": f"이중차분 {effect:+.2f}℃는 검출가능최소효과 {mde:.2f}℃보다 작아 미검출이다. 이 규모로는 효과를 판정할 수 없다."}
+        return {"code": "undetected", "text": f"시공 동과 비교 동의 온도 변화 차이 {effect:+.2f}℃, 알아볼 수 있는 최소 변화 {mde:.2f}℃ 미만으로 효과 판정 불가."}
     if ci is not None and ci[0] <= 0 <= ci[1]:
-        return {"code": "undetected", "text": "95% 신뢰구간이 0을 포함하여 미검출이다."}
-    return {"code": "detected", "text": f"시공 블록의 지표면온도가 대조 블록보다 {effect:+.2f}℃ 변했다."}
+        return {"code": "undetected", "text": "오차 범위 95%가 0 포함, 효과 미확인."}
+    return {"code": "detected", "text": f"시공 동 지표면온도가 비교 동 대비 {effect:+.2f}℃ 변화."}

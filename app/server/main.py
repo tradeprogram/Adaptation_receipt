@@ -65,7 +65,7 @@ class ProjectIn(BaseModel):
 def create_project(body: ProjectIn):
     prj = body.project
     if config.READ_ONLY:
-        raise HTTPException(503, "읽기 전용 배포본에서는 사업을 저장하지 않는다. 로컬 서버에서 등록한다.")
+        raise HTTPException(503, "읽기 전용 배포본에서는 사업 저장 불가, 로컬 서버에서 등록 필요")
     for k in ("id", "name", "type", "geometry"):
         if k not in prj:
             raise HTTPException(400, f"missing field {k}")
@@ -191,7 +191,7 @@ def save_snapshot(pid: str, body: Snapshot):
     import base64
     get_project(pid)
     if config.READ_ONLY:
-        raise HTTPException(503, "읽기 전용 배포본에서는 장면을 저장하지 않는다. 브라우저 저장소의 장면으로 인쇄한다.")
+        raise HTTPException(503, "읽기 전용 배포본에서는 장면 저장 불가, 브라우저 저장소의 장면으로 인쇄")
     head, _, data = body.image.partition(",")
     if not head.startswith("data:image/jpeg"):
         raise HTTPException(400, "jpeg data url required")

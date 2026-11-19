@@ -34,14 +34,32 @@ def scalar_png(arr: np.ndarray, path: Path, vmin: float, vmax: float, stops: lis
     Image.fromarray(np.dstack([rgb, a]), "RGBA").save(path)
 
 
-def class_png(cls: np.ndarray, path: Path, palette: dict[int, tuple[int, int, int, int]]) -> None:
+def _grow(m: np.ndarray, r: int) -> np.ndarray:
+    d = m.copy()
+    for dy in range(-r, r + 1):
+        for dx in range(-r, r + 1):
+            d |= np.roll(np.roll(m, dy, axis=0), dx, axis=1)
+    return d
+
+
+def class_png(cls: np.ndarray, path: Path, palette: dict[int, tuple[int, int, int, int]], dilate: tuple[int, ...] = (), radius: int = 2, halo: bool = True) -> None:
+    """분류값을 색으로. dilate에 든 클래스는 흩어진 화소가 지도에서 표식처럼 읽히도록 radius만큼 넓히고 흰 테두리를 두른다(통계에는 쓰지 않는다)."""
     from PIL import Image
     h, w = cls.shape
     img = np.zeros((h, w, 4), dtype="uint8")
+    fixed = np.isin(cls, [x for x in palette if x not in dilate]) if dilate else np.zeros_like(cls, bool)
+    if dilate and halo:
+        anyd = np.zeros_like(cls, bool)
+        for k in dilate: anyd |= cls == k
+        ring = _grow(anyd, radius + 1) & ~fixed
+        img[ring] = (255, 255, 255, 215)
     for k, c in palette.items():
-        img[cls == k] = c
+        m = cls == k
+        if k in dilate:
+            m = _grow(m, radius) & ~fixed
+        img[m] = c
     Image.fromarray(img, "RGBA").save(path)
 
 
-FLOOD_PALETTE = {1: (31, 90, 160, 225), 2: (120, 120, 120, 150)}                                    # 1 침수(변화) · 2 상시 수역
-CHANGE_PALETTE = {1: (31, 90, 160, 225), 2: (160, 44, 30, 225), 3: (70, 40, 110, 235), 4: (120, 120, 120, 120)}   # 1 전만 · 2 후만 · 3 둘 다 · 4 상시 수역
+FLOOD_PALETTE = {1: (21, 78, 160, 245), 2: (130, 130, 130, 140)}                                    # 1 침수(변화) · 2 상시 수역
+CHANGE_PALETTE = {1: (21, 78, 160, 240), 2: (190, 24, 40, 245), 3: (90, 40, 130, 245), 4: (130, 130, 130, 120)}   # 1 전만 · 2 후만 · 3 둘 다 · 4 상시 수역
