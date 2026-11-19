@@ -320,8 +320,8 @@
       const r = await api(`/api/projects/${id}/card`); if (state.current !== id) return;
       state.card = r.data; renderCard(); setOverlay(state.overlay); drawExtras(p, state.card);
       // 침수처럼 결과가 범위의 일부에만 있으면 그곳으로 카메라를 보낸다
-      const ov0 = state.card.modules?.[0]?.overlays; const fb = ov0?.focus; if (fb) { state.focusBbox = fb; flyToBbox(fb, 1200); if (ov0.focus_share) toast(`침수가 가장 많이 모인 구역으로 확대했다(전체 침수의 ${Math.round(ov0.focus_share * 100)}%). 전체 범위는 축소해서 본다`); }
-    } catch (e) { toast(`카드를 불러오지 못했다 (${e.message})`); $("#cardEmpty p").textContent = "카드를 불러오지 못했다."; }
+      const ov0 = state.card.modules?.[0]?.overlays; const fb = ov0?.focus; if (fb) { state.focusBbox = fb; flyToBbox(fb, 1200); if (ov0.focus_share) toast(`침수 밀집 구역으로 확대, 전체 침수의 ${Math.round(ov0.focus_share * 100)}%. 전체 범위는 축소해 확인`); }
+    } catch (e) { toast(`카드 불러오기 실패 (${e.message})`); $("#cardEmpty p").textContent = "카드 불러오기 실패"; }
     finally { setLoading(false); }
     if (state.poll) { clearInterval(state.poll); state.poll = null; }
     const jobs = (await api(`/api/jobs?project_id=${id}`)).data.filter((j) => ["queued", "running"].includes(j.status));
@@ -439,8 +439,8 @@
     const mod = state.card.modules[0].module;
     const res = await fetch(`/api/projects/${state.current}/verify/${mod}`, { method: "POST" });
     const r = await res.json().catch(() => ({}));
-    if (!res.ok || !r.data) { toast(r.warnings?.[0] || `재검정을 시작하지 못했다 (${res.status})`); return; }
-    toast(r.warnings?.[0] || "검정을 시작했다. 위성 사진 수에 따라 몇 분 걸린다."); watchJob(r.data.id);
+    if (!res.ok || !r.data) { toast(r.warnings?.[0] || `재검정 시작 실패 (${res.status})`); return; }
+    toast(r.warnings?.[0] || "검정 시작. 위성 사진 수에 따라 수 분 소요"); watchJob(r.data.id);
   });
   function watchJob(jobId) {
     $("#jobBar").hidden = false; $("#btnVerify").disabled = true;
@@ -486,7 +486,7 @@
   // ---------- 담당자 요약(쉬운 말) ----------
   const fmtKey = (k) => k.value == null ? `<b class="none">측정 불가</b>` : `<b>${k.signed && k.value > 0 ? "+" : ""}${k.value.toLocaleString("ko-KR")}${k.unit ? `<small>${k.unit}</small>` : ""}</b>`;
   function renderSummary(mod) {
-    const s = mod.summary || {}; $("#sumHead").textContent = s.headline || VERDICT[mod.verdict?.code] || ""; $("#sumText").textContent = s.explain || ""; $("#sumText").hidden = !s.explain;
+    const s = mod.summary || {}; $("#sumHead").textContent = s.headline || VERDICT[mod.verdict?.code] || ""; $("#sumPoints").innerHTML = (s.points || []).map((p) => `<li>${p}</li>`).join(""); $("#sumPoints").hidden = !(s.points || []).length;
     $("#keyNums").innerHTML = (s.key || []).map((k) => `<div class="keynum">${fmtKey(k)}<span>${k.label}</span></div>`).join(""); $("#keyNums").hidden = !(s.key || []).length;
     $("#nextList").innerHTML = (s.next || []).map((n) => `<li>${n}</li>`).join(""); $("#nextBlock").hidden = !(s.next || []).length;
     $("#expert").open = true;
@@ -509,7 +509,7 @@
       return `<tr class="is-link" data-id="${p.id}"><td><b>${p.name}</b><span class="sub">${p.agency || ""}${p.region ? ", " + p.region : ""}</span></td><td>${TYPE_LABEL[p.type]}</td><td>${p.period || ""}</td><td class="num">${p.budget_krw ? (p.budget_krw / 1e8).toLocaleString("ko-KR", { maximumFractionDigits: 1 }) + "억" : "—"}</td><td><span class="mark ${code(r)}">${VERDICT[code(r)] || code(r)}</span><span class="sub">${r.s.headline || ""}</span></td><td>${k}</td><td>${(r.s.next || [])[0] || ""}</td></tr>`; }).join("");
     tb.querySelectorAll("tr.is-link").forEach((tr) => tr.addEventListener("click", () => { showView("dashboard"); selectProject(tr.dataset.id); }));
     const eqRows = rows.filter((r) => r.c.equity?.status === "ok" && r.c.equity.data.reallocation?.rows?.length);
-    $("#sumEquity").textContent = eqRows.map((r) => { const ra = r.c.equity.data.reallocation; const t = ra.rows.filter((x) => x.status === "treated"); const first = ra.rows[0]; return `${r.c.project.name}: 세대 밀도 기준 1순위는 ${first.dong}(${first.households}세대)이고, 실제 시공한 ${t.map((x) => x.dong).join(", ")}은 ${t.map((x) => x.rank + "순위").join(", ")}이다.`; }).join(" ");
+    $("#sumEquity").textContent = eqRows.map((r) => { const ra = r.c.equity.data.reallocation; const t = ra.rows.filter((x) => x.status === "treated"); const first = ra.rows[0]; return `${r.c.project.name}: 세대 밀도 기준 1순위 ${first.dong}(${first.households}세대), 실제 시공 ${t.map((x) => x.dong).join(", ")}은 ${t.map((x) => x.rank + "순위").join(", ")}`; }).join(". ");
   }
 
   // ---------- 새 사업 등록 ----------
@@ -518,7 +518,7 @@
   reg.type.addEventListener("change", regSync);
   $("#btnNew").addEventListener("click", () => {
     showView("dashboard"); state.reg = { bbox: null, treated: [], control: [], pick: null, drawing: false };
-    $("#card").hidden = true; $("#cardEmpty").hidden = true; reg.form.hidden = false; regSync(); $("#drawInfo").textContent = "범위 없음"; $("#pickInfo").textContent = "지도의 건물을 누르면 담긴다"; $("#regMsg").textContent = "";
+    $("#card").hidden = true; $("#cardEmpty").hidden = true; reg.form.hidden = false; regSync(); $("#drawInfo").textContent = "범위 없음"; $("#pickInfo").textContent = "지도의 건물 선택 시 추가"; $("#regMsg").textContent = "";
     if (!map.getSource("draw")) { map.addSource("draw", { type: "geojson", data: { type: "FeatureCollection", features: [] } }); map.addLayer({ id: "draw-line", type: "line", source: "draw", paint: { "line-color": "#b3261e", "line-width": 2, "line-dasharray": [2, 2] } }); map.addLayer({ id: "draw-fill", type: "fill", source: "draw", paint: { "fill-color": "#b3261e", "fill-opacity": 0.08 } }); }
     map.getSource("tc").setData({ type: "FeatureCollection", features: [] }); map.getSource("pts").setData({ type: "FeatureCollection", features: [] });
     if (map.getLayer("overlay")) { map.removeLayer("overlay"); map.removeSource("overlay"); } $("#legend").hidden = true; $("#timeline").hidden = true; $("#overlaySeg").hidden = true; $("#opacityWrap").hidden = true; $("#mapActions").hidden = true;
@@ -528,24 +528,24 @@
   // 범위 그리기: 누른 채 끌어 직사각형. 끝나면 끌기 복구
   $("#btnDraw").addEventListener("click", () => {
     if (!state.reg) return; state.reg.drawing = true; state.reg.pick = null; $("#btnPickT").setAttribute("aria-pressed", "false"); $("#btnPickC").setAttribute("aria-pressed", "false");
-    map.dragPan.disable(); map.getCanvas().style.cursor = "crosshair"; toast("지도 위에서 누른 채 끌어 범위를 그린다"); let start = null;
+    map.dragPan.disable(); map.getCanvas().style.cursor = "crosshair"; toast("지도 위에서 누른 채 끌어 범위 지정"); let start = null;
     const rect = (a, b) => ({ type: "Feature", properties: {}, geometry: bboxPoly([Math.min(a.lng, b.lng), Math.min(a.lat, b.lat), Math.max(a.lng, b.lng), Math.max(a.lat, b.lat)]) });
     const onDown = (e) => { start = e.lngLat; };
     const onMove = (e) => { if (start) map.getSource("draw").setData({ type: "FeatureCollection", features: [rect(start, e.lngLat)] }); };
     const onUp = (e) => { if (!start) return; const b = [Math.min(start.lng, e.lngLat.lng), Math.min(start.lat, e.lngLat.lat), Math.max(start.lng, e.lngLat.lng), Math.max(start.lat, e.lngLat.lat)]; start = null;
       map.off("mousedown", onDown); map.off("mousemove", onMove); map.off("mouseup", onUp); map.dragPan.enable(); map.getCanvas().style.cursor = "";
-      if (b[2] - b[0] < 1e-4 || b[3] - b[1] < 1e-4) { toast("범위가 너무 작다. 다시 그린다"); state.reg.drawing = false; return; }
+      if (b[2] - b[0] < 1e-4 || b[3] - b[1] < 1e-4) { toast("범위 과소, 다시 지정 필요"); state.reg.drawing = false; return; }
       state.reg.bbox = b.map((x) => +x.toFixed(5)); setTimeout(() => { state.reg.drawing = false; }, 50);
       const km2 = (b[2] - b[0]) * 111 * Math.cos(b[1] * Math.PI / 180) * (b[3] - b[1]) * 111;
       $("#drawInfo").textContent = `범위 ${km2.toFixed(1)} km² (${b[1].toFixed(3)}~${b[3].toFixed(3)}°N, ${b[0].toFixed(3)}~${b[2].toFixed(3)}°E)`; };
     map.on("mousedown", onDown); map.on("mousemove", onMove); map.on("mouseup", onUp);
   });
   // 건물 고르기(옥상 차열): 바탕 지도의 건물 외곽선을 그대로 담는다
-  const setPick = (mode) => { state.reg.pick = state.reg.pick === mode ? null : mode; $("#btnPickT").setAttribute("aria-pressed", String(state.reg.pick === "treated")); $("#btnPickC").setAttribute("aria-pressed", String(state.reg.pick === "control")); map.getCanvas().style.cursor = state.reg.pick ? "pointer" : ""; if (state.reg.pick && map.getZoom() < 15) toast("건물이 보이도록 더 확대한다"); };
+  const setPick = (mode) => { state.reg.pick = state.reg.pick === mode ? null : mode; $("#btnPickT").setAttribute("aria-pressed", String(state.reg.pick === "treated")); $("#btnPickC").setAttribute("aria-pressed", String(state.reg.pick === "control")); map.getCanvas().style.cursor = state.reg.pick ? "pointer" : ""; if (state.reg.pick && map.getZoom() < 15) toast("건물이 보이도록 확대 필요"); };
   $("#btnPickT").addEventListener("click", () => setPick("treated")); $("#btnPickC").addEventListener("click", () => setPick("control"));
   function pickBuilding(e) {
     const layers = ["bld-3d", "building", "building-3d"].filter((l) => map.getLayer(l));
-    const f = map.queryRenderedFeatures(e.point, { layers })[0]; if (!f) { toast("여기에는 건물 외곽선이 없다"); return; }
+    const f = map.queryRenderedFeatures(e.point, { layers })[0]; if (!f) { toast("이 지점에 건물 외곽선 없음"); return; }
     const role = state.reg.pick; const h = f.properties.render_height || f.properties.height || 12; const floors = Math.max(1, Math.round(h / 3));
     const feat = { type: "Feature", properties: { name: `${role === "treated" ? "시공" : "비교"} ${state.reg[role].length + 1}`, floors, role }, geometry: f.geometry };
     state.reg[role].push(feat);
@@ -554,27 +554,27 @@
   }
   reg.form.addEventListener("submit", async (ev) => {
     ev.preventDefault(); if (!state.reg) return; const t = reg.type.value; const msg = $("#regMsg");
-    if (!state.reg.bbox) { msg.textContent = "지도에서 범위를 먼저 그린다"; return; }
-    if (t === "heat" && (!state.reg.treated.length || !state.reg.control.length)) { msg.textContent = "시공한 동과 비교할 동을 하나 이상 고른다"; return; }
+    if (!state.reg.bbox) { msg.textContent = "지도에서 범위 지정 필요"; return; }
+    if (t === "heat" && (!state.reg.treated.length || !state.reg.control.length)) { msg.textContent = "시공 동과 비교 동 각 1개 이상 선택 필요"; return; }
     const id = `${t}-${Date.now().toString(36)}`; const budget = $("#rBudget").value ? Math.round(+$("#rBudget").value * 1e8) : null;
     const prj = { id, name: $("#rName").value.trim(), type: t, modules: [t], agency: $("#rAgency").value.trim(), region: $("#rRegion").value.trim(), budget_krw: budget, geometry: { bbox: state.reg.bbox }, beneficiaries: [], notes: ["화면에서 등록"] };
-    if (t === "fire") { if (!$("#rEvent").value) { msg.textContent = "산불 발생일이 필요하다"; return; } prj.event_date = $("#rEvent").value; prj.contained_date = $("#rContained").value || $("#rEvent").value; prj.period = `${prj.event_date.slice(0, 7)} ~`; prj.params = { res_m: 40, dnbr_threshold: 0.27, prefire_ndvi_min: 0.3, control_abs_dnbr_max: 0.05 }; }
-    else { const yb = +$("#rBefore").value, ya = +$("#rAfter").value; if (!yb || !ya) { msg.textContent = "사업 전후 연도가 필요하다"; return; } prj.years_before = [yb]; prj.years_after = [ya]; prj.period = `${yb} ~ ${ya}`;
+    if (t === "fire") { if (!$("#rEvent").value) { msg.textContent = "산불 발생일 입력 필요"; return; } prj.event_date = $("#rEvent").value; prj.contained_date = $("#rContained").value || $("#rEvent").value; prj.period = `${prj.event_date.slice(0, 7)} ~`; prj.params = { res_m: 40, dnbr_threshold: 0.27, prefire_ndvi_min: 0.3, control_abs_dnbr_max: 0.05 }; }
+    else { const yb = +$("#rBefore").value, ya = +$("#rAfter").value; if (!yb || !ya) { msg.textContent = "사업 전후 연도 입력 필요"; return; } prj.years_before = [yb]; prj.years_after = [ya]; prj.period = `${yb} ~ ${ya}`;
       if (t === "heat") { prj.geometry.treated = state.reg.treated.map((f) => ({ type: "Feature", properties: { name: f.properties.name, floors: f.properties.floors }, geometry: f.geometry })); prj.geometry.control = state.reg.control.map((f) => ({ type: "Feature", properties: { name: f.properties.name, floors: f.properties.floors }, geometry: f.geometry })); prj.params = { res_m: 30, max_cloud: 40 }; }
-      if (t === "flood") { if (!$("#rStn").value.trim()) { msg.textContent = "기상청 지점번호가 필요하다"; return; } prj.kma_stn = $("#rStn").value.trim(); prj.events = []; } }
+      if (t === "flood") { if (!$("#rStn").value.trim()) { msg.textContent = "기상청 지점번호 입력 필요"; return; } prj.kma_stn = $("#rStn").value.trim(); prj.events = []; } }
     msg.textContent = "저장 중";
     const res = await fetch("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ project: prj }) });
     const r = await res.json().catch(() => ({}));
-    if (!res.ok) { msg.textContent = r.detail || `저장하지 못했다 (${res.status})`; return; }
+    if (!res.ok) { msg.textContent = r.detail || `저장 실패 (${res.status})`; return; }
     await loadProjects(); state.reg = null; reg.form.hidden = true; if (map.getSource("draw")) map.getSource("draw").setData({ type: "FeatureCollection", features: [] });
     await selectProject(id);
     const vr = await fetch(`/api/projects/${id}/verify/${t}`, { method: "POST" }); const vj = await vr.json().catch(() => ({}));
-    if (vr.ok && vj.data) { toast("등록했다. 위성 자료로 검정을 시작한다"); watchJob(vj.data.id); } else toast(vj.warnings?.[0] || vj.detail || "등록은 되었으나 검정을 시작하지 못했다");
+    if (vr.ok && vj.data) { toast("등록 완료, 위성 자료 검정 시작"); watchJob(vj.data.id); } else toast(vj.warnings?.[0] || vj.detail || "등록 완료, 검정 시작 실패");
   });
   let toastTimer; function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; t.classList.remove("hide"); clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.classList.add("hide"); setTimeout(() => (t.hidden = true), 220); }, 4200); }
 
   (async () => {
     try { await Promise.all([loadProjects(), loadCalendar(), loadKeys()]); const first = state.projects.find((p) => p.results?.fire) || state.projects[0]; if (first) selectProject(first.id); }
-    catch (e) { toast(`초기화에 실패했다 (${e.message})`); }
+    catch (e) { toast(`초기화 실패 (${e.message})`); }
   })();
 })();

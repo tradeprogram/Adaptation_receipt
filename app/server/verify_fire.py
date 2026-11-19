@@ -189,7 +189,7 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
             "recovery_ratio_latest": metric(last_ratio, "MODEL", "비", n=int(burn.sum()), note=f"{latest} 피해지와 비교 구역의 식생지수 중앙값 비"),
             "did_effect_ndvi": metric(did["effect"], "MODEL", "NDVI", n=did["n"].get("treat_post"), note=did["reason"] or "피해지 변화에서 비교 구역 변화를 뺀 값"),
             "ci95_median_diff": metric(list(ci) if ci else None, "MODEL", "NDVI", note="최근 시점 피해지와 비교 구역의 중앙값 차이, 부트스트랩 95% 구간(seed 42)"),
-            "mde_ndvi": metric(mde, "ASSUMPTION", "NDVI", note="화소 독립 가정의 근사치이며 실제로는 더 큰 변화라야 알아볼 수 있다"),
+            "mde_ndvi": metric(mde, "ASSUMPTION", "NDVI", note="화소 독립 가정의 근사치, 실제 식별 가능 변화는 더 큼"),
             "valid_pct_min": metric(min(s["valid_pct"] for s in scenes if s.get("valid_pct") is not None), "OBSERVED", "%"),
         },
         "severity": severity, "series": series, "scenes": scenes, "failed": failed,
@@ -199,10 +199,10 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
                                 "post": {"label": "진화 직후", "type": "text", "text": f"Sentinel-2 진색 합성 {next((x['date'] for x in scenes if x['label'] == 'post'), '')}"}}},
         "verdict": _verdict(last_ratio, did["effect"], mde, ci),
         "limitations": [
-            "복원 구역 자료가 결합되기 전의 예비 분석이다. 구역 자료가 들어오면 사업 구역을 계획복원지로, 비교 구역을 자연복원지로 다시 정의한다.",
-            "식생지수의 회복에는 풀과 관목의 재생도 들어가므로 나무의 회복과 다를 수 있다.",
-            "알아볼 수 있는 최소 변화는 화소가 서로 독립이라고 가정한 낙관적 값이다.",
-            "궤도 가장자리와 타일 경계 밖은 분석에서 제외했다.",
+            "복원 구역 자료 결합 전의 예비 분석. 구역 자료 확보 시 사업 구역은 계획복원지, 비교 구역은 자연복원지로 재정의",
+            "식생지수 회복에 풀과 관목 재생 포함, 조림목 회복과 상이 가능",
+            "알아볼 수 있는 최소 변화는 화소 독립 가정의 낙관적 값",
+            "궤도 가장자리와 타일 경계 밖은 분석 제외",
         ],
     }
 
@@ -214,8 +214,8 @@ def _verdict(ratio, effect, mde, ci) -> dict:
     below_mde = mde is not None and abs(effect) < mde
     ci_has_zero = ci is not None and ci[0] <= 0 <= ci[1]
     if below_mde or ci_has_zero:
-        return {"code": "recovered", "text": f"최근 회복률은 {ratio:.2f}이다. 피해지와 비교 구역의 변화 차이 {effect:+.3f}은 알아볼 수 있는 최소 변화 안에 있으므로 주변 숲 수준으로 회복한 것으로 판정한다."}
-    ci_txt = f" 오차 범위 95%는 {ci[0]:+.3f}~{ci[1]:+.3f}로 0을 포함하지 않는다." if ci else ""
+        return {"code": "recovered", "text": f"최근 회복률 {ratio:.2f}. 피해지와 비교 구역의 변화 차이 {effect:+.3f}은 알아볼 수 있는 최소 변화 이내, 주변 숲 수준 회복으로 판정."}
+    ci_txt = f" 오차 범위 95% {ci[0]:+.3f}~{ci[1]:+.3f}, 0 미포함." if ci else ""
     if effect < 0:
-        return {"code": "gap_remaining", "text": f"최근 회복률은 {ratio:.2f}이다. 피해지 식생지수가 비교 구역보다 {abs(effect):.3f} 낮아 회복 격차가 남아 있다.{ci_txt}"}
-    return {"code": "recovered", "text": f"최근 회복률은 {ratio:.2f}이다. 피해지의 변화가 비교 구역을 {effect:+.3f} 웃돈다.{ci_txt}"}
+        return {"code": "gap_remaining", "text": f"최근 회복률 {ratio:.2f}. 피해지 식생지수가 비교 구역보다 {abs(effect):.3f} 낮아 회복 격차 잔존.{ci_txt}"}
+    return {"code": "recovered", "text": f"최근 회복률 {ratio:.2f}. 피해지 변화가 비교 구역을 {effect:+.3f} 상회.{ci_txt}"}

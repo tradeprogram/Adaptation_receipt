@@ -286,3 +286,5 @@ code{font-family:var(--font-marg);font-size:1em;background:var(--paper-2);paddin
 .reg-geo{margin-top:14px;padding-top:10px;border-top:1px solid var(--rule-soft)} .reg-row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:6px}
 .reg .act[aria-pressed="true"]{background:var(--seal);color:var(--paper);border-color:var(--seal)}
 .reg-actions{margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+
+.sum-points{margin:6px 0 0 18px;padding:0;font-size:13.5px;line-height:1.6;color:var(--ink-2)} .sum-points li{margin:2px 0;text-wrap:pretty}

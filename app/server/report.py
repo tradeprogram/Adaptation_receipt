@@ -52,60 +52,60 @@ PLAIN_KEY = {
 
 
 def plain_summary(m: str, r: dict) -> dict:
-    """담당자가 읽는 요약: 결론 한 줄, 쉬운 설명, 핵심 수치 3개, 다음에 할 일. 수치는 모듈 결과에서만 가져온다."""
+    """담당자가 읽는 요약(개조식). 결론 한 줄, 근거 항목, 핵심 수치 3개, 조치 사항. 수치는 모듈 결과에서만 가져온다."""
     v = r.get("verdict") or {}; code = v.get("code") or r.get("status") or "not_run"
     mt = r.get("metrics") or {}
     val = lambda k: (mt.get(k) or {}).get("value")
-    head = PLAIN_VERDICT.get(code, code); expl = v.get("text", ""); key: list = []; nxt: list = []
+    head = PLAIN_VERDICT.get(code, code); pts: list = []; key: list = []; nxt: list = []
     if m == "fire":
         ratio, eff, ci, ha = val("recovery_ratio_latest"), val("did_effect_ndvi"), val("ci95_median_diff"), val("burned_forest_ha")
         series = r.get("series") or []; last = series[-1] if series else {}
         key = [{"label": "피해 산림 면적", "value": ha, "unit": "ha"}, {"label": "회복률(피해지 ÷ 주변 숲)", "value": round(ratio * 100) if ratio is not None else None, "unit": "%"},
                {"label": "주변 숲과의 차이", "value": round(eff, 3) if eff is not None else None, "unit": "식생지수", "signed": True}]
         if code == "gap_remaining" and ratio is not None:
-            head = "피해지가 아직 주변 숲만큼 회복되지 않았다"
-            expl = f"최근 관측일인 {last.get('date', '')} 기준으로 피해지의 식생지수는 주변 숲의 {ratio * 100:.0f}% 수준이다. 주변 숲과 견준 변화 차이는 {eff:+.3f}이고" + (f", 오차 범위 {ci[0]:+.3f}~{ci[1]:+.3f}가 0을 포함하지 않으므로 우연한 차이로 보기 어렵다." if ci else "이다.")
-            nxt = ["회복이 늦은 사면부터 보식과 사방 예산을 배정한다. 지도에서 피해 정도가 짙은 붉은 구역이 그 대상이다.", "내년 같은 생장기에 같은 방법으로 다시 검정하고 회복률 변화를 보고서에 이어 적는다.", "식생지수는 풀과 관목의 회복도 함께 잡으므로 나무의 활착은 현장조사로 확인한다."]
+            head = "피해지 식생 회복이 주변 숲 수준에 미달"
+            pts = [f"최근 관측일 {last.get('date', '')} 기준 피해지 식생지수는 주변 숲의 {ratio * 100:.0f}% 수준", f"주변 숲 대비 변화 차이 {eff:+.3f}" + (f", 오차 범위 {ci[0]:+.3f}~{ci[1]:+.3f}로 0 미포함" if ci else ""), "우연한 차이로 보기 어려운 회복 격차 잔존"]
+            nxt = ["회복이 늦은 사면부터 보식과 사방 예산 우선 배정 필요, 지도의 피해 정도 짙은 구역이 대상", "내년 같은 생장기에 동일 방법으로 재검정, 회복률 변화를 보고서에 누적 기재", "식생지수는 풀과 관목 회복 포함, 조림목 활착은 현장조사로 확인 필요"]
         elif code == "recovered" and ratio is not None:
-            head = "피해지가 주변 숲 수준으로 회복되었다"
-            expl = f"최근 관측일인 {last.get('date', '')} 기준으로 피해지의 식생지수는 주변 숲의 {ratio * 100:.0f}% 수준이며, 주변 숲과의 변화 차이 {eff:+.3f}은 오차 범위 안에 있다."
-            nxt = ["이 카드를 이행점검 보고서 부록으로 첨부한다.", "나무의 활착은 현장조사로 따로 확인한다."]
+            head = "피해지 식생 회복이 주변 숲 수준에 도달"
+            pts = [f"최근 관측일 {last.get('date', '')} 기준 피해지 식생지수는 주변 숲의 {ratio * 100:.0f}% 수준", f"주변 숲 대비 변화 차이 {eff:+.3f}, 오차 범위 이내"]
+            nxt = ["이행점검 보고서 부록으로 첨부", "조림목 활착은 현장조사로 별도 확인 필요"]
     elif m == "heat":
         eff, mde, area, a1 = val("did_effect_lst_c"), val("mde_c"), val("treated_area_ha"), val("area_for_mde_1c_ha")
         key = [{"label": "비교 동 대비 온도 변화", "value": round(eff, 2) if eff is not None else None, "unit": "℃", "signed": True},
                {"label": "알아볼 수 있는 최소 변화", "value": round(mde, 2) if mde is not None else None, "unit": "℃"}, {"label": "시공 면적", "value": round(area, 2) if area is not None else None, "unit": "ha"}]
         if code == "undetected" and eff is not None and mde is not None:
-            head = "이 시공 규모로는 온도 효과를 확인할 수 없다"
-            expl = f"시공 동의 낮 지표면 온도는 비교 동보다 {eff:+.2f}℃ 변했다. 그러나 시공 면적 {area:.2f} ha에서 30 m 위성 사진으로 알아볼 수 있는 최소 변화는 {mde:.2f}℃이므로 이 차이는 판정 범위 밖이다. 효과가 없다는 뜻은 아니며, 사진 해상도에 견주어 시공 면적이 작다는 뜻이다."
-            nxt = [f"다음 시공은 한 블록 {a1:.1f} ha 이상으로 묶어야 1℃ 변화를 확인할 수 있다." if a1 else "다음 시공은 블록 단위로 묶어 발주한다.", "세대 밀도가 높은 동부터 시공하는 다음 집행 순위를 아래 형평성 난에서 참고한다.", "낮 지표면 온도이므로 밤 더위와 실내 온도는 별도 자료로 본다."]
+            head = "현재 시공 규모에서는 온도 저감 효과 확인 불가"
+            pts = [f"시공 동의 낮 지표면 온도 변화는 비교 동 대비 {eff:+.2f}℃", f"시공 면적 {area:.2f} ha에서 30 m 위성으로 알아볼 수 있는 최소 변화는 {mde:.2f}℃, 관측 차이는 판정 범위 밖", "효과 부재의 증명은 아님, 해상도 대비 시공 면적 과소가 원인"]
+            nxt = [f"다음 시공은 한 블록 {a1:.1f} ha 이상으로 묶어 발주해야 1℃ 변화 확인 가능" if a1 else "다음 시공은 블록 단위로 묶어 발주 필요", "세대 밀도 상위 동부터 시공하는 다음 집행 순위 참고, 아래 형평성 난에 제시", "낮 지표면 온도 기준, 야간 더위와 실내 온도는 별도 자료 필요"]
         elif code == "detected" and eff is not None:
-            head = f"시공 동의 낮 지표면 온도가 비교 동보다 {eff:+.2f}℃ 변했다"
-            expl = f"알아볼 수 있는 최소 변화 {mde:.2f}℃를 넘는 차이다." if mde else ""
-            nxt = ["이 카드를 이행점검 보고서 부록으로 첨부한다.", "같은 설계로 다른 단지에도 시공 전후를 비교한다."]
+            head = f"시공 동 낮 지표면 온도가 비교 동 대비 {eff:+.2f}℃ 변화"
+            pts = [f"알아볼 수 있는 최소 변화 {mde:.2f}℃ 초과"] if mde else []
+            nxt = ["이행점검 보고서 부록으로 첨부", "동일 설계로 다른 단지의 시공 전후 비교 확대"]
     elif m == "flood":
         hb, ha_, hpb, hpa, npct = val("flooded_ha_before"), val("flooded_ha_after"), val("flooded_ha_per_mm_before"), val("flooded_ha_per_mm_after"), val("flooded_change_pct_rain_adjusted")
         key = [{"label": "정비 전 침수 면적", "value": round(hb) if hb is not None else None, "unit": "ha"}, {"label": "정비 후 침수 면적", "value": round(ha_) if ha_ is not None else None, "unit": "ha"},
                {"label": "비의 세기를 감안한 변화", "value": round(npct) if npct is not None else None, "unit": "%", "signed": True}]
         ev = r.get("events") or []; rb = [e for e in ev if e.get("phase") == "before" and (e.get("stage2") or {}).get("flooded_ha") is not None]; ra = [e for e in ev if e.get("phase") == "after" and (e.get("stage2") or {}).get("flooded_ha") is not None]
         if code in ("not_reduced", "reduced") and hb is not None and ha_ is not None:
-            head = "정비 후에도 침수 면적이 줄지 않았다" if code == "not_reduced" else "정비 후 침수 면적이 줄었다"
+            head = "정비 후 침수 면적 저감 미확인" if code == "not_reduced" else "정비 후 침수 면적 저감 확인"
             rain_b = max((e.get("rain") or {}).get("max_3h", 0) for e in rb) if rb else None; rain_a = max((e.get("rain") or {}).get("max_3h", 0) for e in ra) if ra else None
-            expl = f"정비 전 호우에는 {hb:,.0f} ha, 정비 후 호우에는 {ha_:,.0f} ha가 잠긴 것으로 위성 레이더에 잡혔다."
+            pts = [f"위성 레이더 판독 침수 면적은 정비 전 {hb:,.0f} ha, 정비 후 {ha_:,.0f} ha"]
             if hpb is not None and hpa is not None:
-                expl += f" 비 1 mm당 침수 면적은 {hpb:.2f}에서 {hpa:.2f} ha로 {npct:+.0f}% 변했다."
+                pts.append(f"비 1 mm당 침수 면적은 {hpb:.2f}에서 {hpa:.2f} ha로 {npct:+.0f}% 변화")
             if rain_b and rain_a:
-                expl += f" 다만 정비 후 호우는 3시간 최대 {rain_a:.0f} mm로 정비 전의 {rain_b:.0f} mm보다 강했으므로, 이 변화는 사업 효과와 호우 강도의 차이가 섞인 결과다."
-            nxt = ["정비 후에도 잠긴 구역을 현장조사 대상에 올린다. 지도에서 정비 후에만 침수로 표시된 곳이 그 대상이다.", "다음 호우 뒤 같은 방법으로 다시 비교해 보고서에 이어 적는다.", "위성이 지나간 시각의 수면이므로 최대 침수 범위보다 작게 잡힌다."] if code == "not_reduced" else ["이 카드를 이행점검 보고서 부록으로 첨부한다.", "다음 호우 뒤 같은 방법으로 다시 비교한다."]
+                pts.append(f"정비 후 호우의 3시간 최대 강우 {rain_a:.0f} mm는 정비 전 {rain_b:.0f} mm보다 강해 사업 효과와 호우 강도 차이가 혼재")
+            nxt = ["정비 후에도 침수된 구역의 현장조사 대상 등록 필요, 지도의 정비 후에만 침수 표시 구역이 대상", "다음 호우 뒤 동일 방법으로 재비교, 보고서에 누적 기재", "위성 통과 시각의 수면 기준으로 최대 침수 범위보다 과소 추정"] if code == "not_reduced" else ["이행점검 보고서 부록으로 첨부", "다음 호우 뒤 동일 방법으로 재비교"]
     if code in ("not_run", "waiting_input"):
-        head = "아직 검정하지 않았다" if code == "not_run" else "검정에 필요한 입력이 남아 있다"; nxt = ["다시 검정을 누르면 공개 위성 자료로 계산한다."]
-    return {"code": code, "verdict_plain": PLAIN_VERDICT.get(code, code), "headline": head, "explain": expl, "key": key, "next": nxt}
+        head = "미검정" if code == "not_run" else "검정 입력 대기"; nxt = ["다시 검정 실행 시 공개 위성 자료로 계산"]
+    return {"code": code, "verdict_plain": PLAIN_VERDICT.get(code, code), "headline": head, "points": pts, "explain": " ".join(p + "." for p in pts), "key": key, "next": nxt}
 
 
 def build_card(project: dict, results: dict[str, dict | None], equity: dict | None) -> dict:
     modules = []
     for m, r in results.items():
         if r is None:
-            modules.append({"module": m, "label": MODULE_LABEL.get(m, m), "status": "not_run", "verdict": {"code": "not_run", "text": "아직 검정하지 않았다."}, "summary": plain_summary(m, {}), "metrics": [], "limitations": []})
+            modules.append({"module": m, "label": MODULE_LABEL.get(m, m), "status": "not_run", "verdict": {"code": "not_run", "text": "미검정"}, "summary": plain_summary(m, {}), "metrics": [], "limitations": []})
             continue
         rows = []
         for k, mt in (r.get("metrics") or {}).items():
@@ -125,7 +125,7 @@ def build_card(project: dict, results: dict[str, dict | None], equity: dict | No
         snap = {"url": f"/api/projects/{project['id']}/snapshot.jpg", "caption": meta.get("caption", ""), "at": meta.get("at", "")}
     return {"snapshot": snap, "project": {k: project.get(k) for k in ("id", "name", "type", "agency", "region", "budget_krw", "period", "legal_basis", "description", "event_date", "contained_date", "geometry", "kma_station")},
             "generated_at": dt.datetime.now().isoformat(timespec="seconds"), "modules": modules, "equity": eq,
-            "badges": BADGE_LABEL, "labels": PLAIN_KEY, "plain_verdict": PLAIN_VERDICT, "disclaimer": "모든 수치에는 출처 배지가 붙는다. 측정 불가는 표본 부족이나 관측 공백을 뜻하며 0이 아니다. 미검출은 효과가 없다는 증명이 아니다."}
+            "badges": BADGE_LABEL, "labels": PLAIN_KEY, "plain_verdict": PLAIN_VERDICT, "disclaimer": "모든 수치에 출처 배지 부착. 측정 불가는 표본 부족 또는 관측 공백을 뜻하며 0이 아님. 효과 미확인은 효과 부재의 증명이 아님."}
 
 
 def render_html(card: dict) -> str:

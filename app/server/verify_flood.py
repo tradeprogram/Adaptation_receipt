@@ -214,10 +214,10 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
         "metrics": {
             "events_total": metric(len(out), "OBSERVED", "건", note=f"기상청 자동 추출 {n_auto}건 + 수기 {len(out) - n_auto}건"),
             "grade_counts": metric(counts, "RULE", "건", note="관측 지연시간 규칙 판정"),
-            "stage2_ready": metric(ready, "RULE", "", note="정비 전과 후에 위성으로 확인 가능한 사건이 각 1건 이상이면 침수 범위를 비교한다"),
+            "stage2_ready": metric(ready, "RULE", "", note="정비 전과 후에 위성 관측 가능 사건 각 1건 이상일 때 침수 범위 비교"),
             "flooded_ha_before": metric(ha_b, "MODEL", "ha", n=sum(1 for o in ab if o["phase"] == "before" and o.get("stage2", {}).get("flooded_ha") is not None), note="정비 전 A/B 사건 침수 추정 범위 합집합(상시 수역 제외)"),
             "flooded_ha_after": metric(ha_a, "MODEL", "ha", n=sum(1 for o in ab if o["phase"] == "after" and o.get("stage2", {}).get("flooded_ha") is not None), note="정비 후 A/B 사건 침수 추정 범위 합집합"),
-            "flooded_change_ha": metric(change_ha, "MODEL", "ha", note="정비 후에서 정비 전을 뺀 값. 강우 강도 차이는 보정하지 않았다"),
+            "flooded_change_ha": metric(change_ha, "MODEL", "ha", note="정비 후에서 정비 전을 뺀 값, 강우 강도 차이 미보정"),
             "flooded_change_pct": metric(change_pct, "MODEL", "%", note="정비 전 대비 변화율"),
             "flooded_ha_per_mm_before": metric(hpm_b, "MODEL", "ha/mm", n=sum(1 for o in ab if o["phase"] == "before" and o.get("ha_per_mm") is not None), note="정비 전 사건의 침수 ha를 최대 3시간 강우로 나눈 값"),
             "flooded_ha_per_mm_after": metric(hpm_a, "MODEL", "ha/mm", n=sum(1 for o in ab if o["phase"] == "after" and o.get("ha_per_mm") is not None), note="정비 후 사건의 침수 ha를 최대 3시간 강우로 나눈 값"),
@@ -226,10 +226,10 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
         "overlays": overlays,
         "events": out, "failed": failed,
         "verdict": _verdict(ready, ha_b, ha_a, change_pct, ab, hpm_b, hpm_a, norm_pct),
-        "limitations": ["관측 가능성은 위성이 지나간 시각을 기준으로 매긴다.",
-                        "침수 범위는 첫 통과 시점의 수면만 잡는다. 그래서 정점 뒤 2~3일이 지난 B등급 사건에서는 이미 물이 빠진 구역이 빠진다.",
-                        "레이더 판독 기준은 잔잔한 수면에 맞춘 값이다. 따라서 거친 수면과 침수된 작물은 적게, 평탄한 포장면은 많게 잡힌다.",
-                        "정비 전후 사건의 강우 강도가 다르므로 범위 변화에는 호우 강도의 차이가 섞여 있다."],
+        "limitations": ["관측 가능성은 위성 통과 시각 기준",
+                        "침수 범위는 첫 통과 시점 수면만 포착, 정점 뒤 2~3일 지난 B등급 사건은 배수 완료 구역 누락",
+                        "레이더 판독 기준은 잔잔한 수면 기준, 거친 수면과 침수 작물은 과소, 평탄한 포장면은 과대 추정",
+                        "정비 전후 강우 강도 차이로 범위 변화에 호우 강도 효과 혼재"],
     }
 
 
@@ -237,12 +237,12 @@ def _verdict(ready: bool, ha_b, ha_a, change_pct, ab: list[dict], hpm_b=None, hp
     if ha_b is not None and ha_a is not None:
         rb = max([(o.get("rain") or {}).get("max_3h", 0) for o in ab if o["phase"] == "before"] or [0])
         ra = max([(o.get("rain") or {}).get("max_3h", 0) for o in ab if o["phase"] == "after"] or [0])
-        rain = f" 최대 3시간 강우는 정비 전 {rb:.0f} mm, 정비 후 {ra:.0f} mm였다." if (rb or ra) else ""
-        adj = f" 강우량당 침수 면적은 {hpm_b:.2f}에서 {hpm_a:.2f} ha/mm로 바뀌었다({norm_pct:+.0f}%)." if (hpm_b is not None and hpm_a is not None and norm_pct is not None) else ""
+        rain = f" 최대 3시간 강우 정비 전 {rb:.0f} mm, 정비 후 {ra:.0f} mm." if (rb or ra) else ""
+        adj = f" 강우량당 침수 면적 {hpm_b:.2f}에서 {hpm_a:.2f} ha/mm로 변화({norm_pct:+.0f}%)." if (hpm_b is not None and hpm_a is not None and norm_pct is not None) else ""
         key_pct = norm_pct if norm_pct is not None else change_pct
         if key_pct is not None and key_pct <= -10:
-            return {"code": "reduced", "text": f"침수 추정 범위가 정비 전 {ha_b:,.0f} ha에서 정비 후 {ha_a:,.0f} ha로 줄었다({change_pct:+.0f}%).{adj}{rain}"}
-        return {"code": "not_reduced", "text": f"침수 추정 범위는 정비 전 {ha_b:,.0f} ha, 정비 후 {ha_a:,.0f} ha로 감소를 확인하지 못했다({change_pct:+.0f}%).{adj}{rain}"}
+            return {"code": "reduced", "text": f"침수 추정 범위 정비 전 {ha_b:,.0f} ha, 정비 후 {ha_a:,.0f} ha로 감소({change_pct:+.0f}%).{adj}{rain}"}
+        return {"code": "not_reduced", "text": f"침수 추정 범위 정비 전 {ha_b:,.0f} ha, 정비 후 {ha_a:,.0f} ha로 감소 미확인({change_pct:+.0f}%).{adj}{rain}"}
     if ready:
-        return {"code": "ready", "text": "정비 전후 모두 위성으로 확인 가능한 사건이 있으나 한쪽 시기의 침수 범위를 산출하지 못했다."}
-    return {"code": "waiting", "text": "정비 전 또는 후에 위성으로 확인 가능한 사건이 없어 침수 범위를 비교하지 않는다."}
+        return {"code": "ready", "text": "정비 전후 모두 위성 관측 가능 사건 확보, 한쪽 시기의 침수 범위 산출 실패."}
+    return {"code": "waiting", "text": "정비 전 또는 후에 위성 관측 가능 사건 부재, 침수 범위 비교 미실시."}

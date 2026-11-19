@@ -36,7 +36,7 @@
   .warn{border:1px solid var(--seal);background:var(--slip);color:var(--seal);padding:8px 12px;font-size:12px}
   details summary{cursor:pointer}
   .sum{margin:6px 0 10px;padding:12px 14px;border:1px solid var(--rule);background:#fff}
-  .sum-head{font-size:16px;font-weight:700;line-height:1.35}.sum-text{margin:6px 0 0;font-size:12.5px;line-height:1.6}
+  .sum-head{font-size:16px;font-weight:700;line-height:1.35}.sum-points{margin:6px 0 0 18px;padding:0;font-size:12.5px;line-height:1.6}.sum-points li{margin:1px 0}
   .keynums{display:grid;grid-template-columns:repeat(3,1fr);margin:10px 0 0;border-top:1px solid var(--rule)}.keynums div{padding:8px 6px 6px;border-right:1px solid #ddd}.keynums div:last-child{border-right:0}
   .keynums b{display:block;font-size:20px;font-family:"Courier Prime",monospace}.keynums small{font-size:11px;font-weight:400}.keynums span{font-size:11px;color:var(--muted)}
   .next{margin-top:10px;font-size:12.5px}.next b{font-size:11px;letter-spacing:.08em;color:var(--muted)}.next ol{margin:4px 0 0 18px;line-height:1.55}
@@ -70,9 +70,9 @@
   {% set s = m.summary %}
   <div class="sum">
     <div class="sum-head">{{ s.headline }}</div>
-    {% if s.explain %}<p class="sum-text">{{ s.explain }}</p>{% endif %}
+    {% if s.points %}<ul class="sum-points">{% for p in s.points %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
     {% if s.key %}<div class="keynums">{% for k in s.key %}<div><b>{% if k.value is none %}측정 불가{% else %}{% if k.signed and k.value > 0 %}+{% endif %}{{ "{:,}".format(k.value) }}{% if k.unit %} <small>{{ k.unit }}</small>{% endif %}{% endif %}</b><span>{{ k.label }}</span></div>{% endfor %}</div>{% endif %}
-    {% if s.next %}<div class="next"><b>다음에 할 일</b><ol>{% for n in s.next %}<li>{{ n }}</li>{% endfor %}</ol></div>{% endif %}
+    {% if s.next %}<div class="next"><b>조치 사항</b><ol>{% for n in s.next %}<li>{{ n }}</li>{% endfor %}</ol></div>{% endif %}
   </div>
   <div class="verdict {{ m.verdict.code }}"><b>판정 {{ s.verdict_plain }}</b> {{ m.verdict.text }}</div>
   {% if m.needs %}<div class="warn">필요한 입력: {{ m.needs|join(", ") }}</div>{% endif %}

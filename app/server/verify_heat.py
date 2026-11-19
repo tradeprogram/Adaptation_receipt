@@ -141,16 +141,16 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
         },
         "shelters": (sh or {}).get("items", [])[:50],
         "scenes": scenes, "failed": failed, "verdict": _verdict(did["effect"], mde, ci),
-        "limitations": ["30 m 해상도에서는 단일 동의 효과를 알아보기 어렵다. 블록 단위로 묶어 검정하는 편이 낫다.",
-                        "Landsat은 오전에 지나가므로 밤의 열섬은 보지 못한다.", "지표면온도는 기온이나 실내 온도와 다르다."],
+        "limitations": ["30 m 해상도에서 단일 동 효과 식별 곤란, 블록 단위 검정 권장",
+                        "Landsat 오전 통과로 야간 열섬 미관측", "지표면온도는 기온 및 실내 온도와 상이"],
     }
 
 
 def _verdict(effect, mde, ci) -> dict:
     if effect is None:
-        return {"code": "unmeasured", "text": "시공 전후 또는 시공 동과 비교 동 가운데 관측이 없는 쪽이 있어 판정하지 않는다."}
+        return {"code": "unmeasured", "text": "시공 전후 또는 시공 동과 비교 동 가운데 관측 결측, 판정 보류."}
     if mde is not None and abs(effect) < mde:
-        return {"code": "undetected", "text": f"시공 동과 비교 동의 온도 변화 차이 {effect:+.2f}℃는 알아볼 수 있는 최소 변화 {mde:.2f}℃보다 작다. 이 규모로는 효과를 판정할 수 없다."}
+        return {"code": "undetected", "text": f"시공 동과 비교 동의 온도 변화 차이 {effect:+.2f}℃, 알아볼 수 있는 최소 변화 {mde:.2f}℃ 미만으로 효과 판정 불가."}
     if ci is not None and ci[0] <= 0 <= ci[1]:
-        return {"code": "undetected", "text": "오차 범위 95%가 0을 포함하므로 효과를 확인하지 못했다."}
-    return {"code": "detected", "text": f"시공 동의 지표면온도가 비교 동보다 {effect:+.2f}℃ 변했다."}
+        return {"code": "undetected", "text": "오차 범위 95%가 0 포함, 효과 미확인."}
+    return {"code": "detected", "text": f"시공 동 지표면온도가 비교 동 대비 {effect:+.2f}℃ 변화."}
