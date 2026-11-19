@@ -158,6 +158,10 @@ bg.text(80, H - 1, "구매 근거와 단가", fontsize=T_SMALL, ha="center", va=
 bg.text(41, 1.5, "주체 수(곳)", fontsize=T_SMALL, ha="center", color=GREY_M)
 save(fig, bg, "fig_market")
 
+LOGO = OUT / "logos"
+logo_arr = lambda key: (lambda im: (lambda a: a.crop(Image.fromarray(((np.asarray(a)[:, :, 3] > 20) & (np.asarray(a)[:, :, :3].min(axis=2) < 245)).astype("uint8") * 255).getbbox()))(im))(Image.open(LOGO / f"{key}.png").convert("RGBA"))
+logo_px = lambda key, h, bgc: (lambda im: (lambda px: Image.alpha_composite(Image.new("RGBA", im.size, bgc), im).convert("RGB").resize((max(1, round(px * im.size[0] / im.size[1])), px), Image.LANCZOS))(max(1, round(h * W / 100 * 280))))(logo_arr(key))
+logo = lambda fig, H, key, x, y, h, cy=False, bgc="#FFFFFF": (lambda im: (lambda w: ((lambda a: (a.imshow(np.asarray(im), interpolation="none"), a.axis("off")))(fig.add_axes([x / 100, (y - (h / 2 if cy else 0)) / H, w / 100, h / H])), x + w)[1])(h * im.size[0] / im.size[1]))(logo_px(key, h, bgc))
 # ===================== 4. 시스템 구성도 =====================
 fig, bg, H = setup(9.0)
 LX, X0, X1 = 2, 9.5, 98
@@ -166,14 +170,18 @@ for t, y, h in bands:
     frame(bg, LX, y, X1 - LX, h)
     vband(bg, LX, y, 6.5, h, t)
 # (1) 자료 타일 2줄 × 5
-tiles = [("기상청", "API허브 ASOS", "시간강우, 호우 사건", NAVY), ("행정안전부", "재난안전데이터", "무더위쉼터", NAVY), ("통계청", "SGIS", "읍면 인구, 경계", NAVY), ("국토교통부", "공공데이터포털", "건축물대장 표제부", NAVY), ("국토교통부", "브이월드", "건물 외곽선", NAVY),
-         ("ESA Copernicus", "Sentinel-1", "레이더 침수 범위", BLUE), ("ESA Copernicus", "Sentinel-2", "산불 피해, 회복", BLUE), ("USGS", "Landsat 8/9", "지표면온도", BLUE), ("Microsoft", "Planetary Computer", "위성 검색, 읽기", BLUE), ("산림청, 지자체", "사업 대장", "위치, 기간, 예산", POINT["ochre"])]
+tiles = [(["kma"], "API허브 ASOS", "시간강우, 호우 사건", ""), (["mois"], "재난안전데이터", "무더위쉼터", ""), (["mods"], "SGIS", "읍면 인구, 경계", ""), (["molit"], "공공데이터포털", "건축물대장 표제부", ""), (["molit"], "브이월드", "건물 외곽선", ""),
+         (["esa", "copernicus"], "Sentinel-1", "레이더 침수 범위", ""), (["esa", "copernicus"], "Sentinel-2", "산불 피해, 회복", ""), (["usgs"], "Landsat 8/9", "지표면온도", ""), (["microsoft"], "Planetary Computer", "위성 검색, 읽기", ""), (["kfs"], "사업 대장", "위치, 기간, 예산", "지자체")]
+LH = {"kma": 3.0, "mois": 3.0, "mods": 3.0, "molit": 3.0, "kfs": 3.0, "esa": 2.7, "copernicus": 2.5, "usgs": 2.6, "microsoft": 2.1}
 tw, th, tg = 16.6, 12.2, 0.8
-for i, (org, prod, use, col) in enumerate(tiles):
+for i, (keys, prod, use, extra) in enumerate(tiles):
     r_, c_ = divmod(i, 5); x = X0 + 1.2 + c_ * (tw + tg); y = H - 15.5 - r_ * (th + 1.3)
     bg.add_patch(patches.Rectangle((x, y), tw, th, fc="white", ec=GREY_D, lw=0.7, zorder=2))
-    bg.add_patch(patches.Circle((x + 2.2, y + th - 2.4), 1.15, fc=col, ec="none", zorder=3))
-    boxes_log.append((bg.text(x + 4.0, y + th - 2.4, org, fontsize=T_SMALL, fontweight="bold", va="center", color=INK, zorder=3), (x, y, tw, th)))
+    lx = x + 1.0
+    for k in keys:
+        lx = logo(fig, H, k, lx, y + th - 2.5, LH[k], cy=True) + 0.8
+    if extra:
+        boxes_log.append((bg.text(lx + 0.2, y + th - 2.5, extra, fontsize=T_SMALL, fontweight="bold", va="center", color=INK, zorder=3), (x, y, tw, th)))
     boxes_log.append((bg.text(x + tw / 2, y + th / 2 - 0.6, prod, fontsize=T_BODY, fontweight="bold", ha="center", va="center", color=INK, zorder=3), (x, y, tw, th)))
     boxes_log.append((bg.text(x + tw / 2, y + 2.0, use, fontsize=T_SMALL, ha="center", va="center", color=GREY_M, zorder=3), (x, y, tw, th)))
 block(bg, 50, H - 30.3, H - 34.6, w=3.2)
@@ -199,7 +207,8 @@ for i, (nm, arr, cap) in enumerate(mods):
     bg.text(x + mw / 2, y - 1.0, cap, fontsize=T_SMALL, ha="center", va="top", color=INK, linespacing=1.25)
 gx, gy, gw_, gh_ = X0 + 1.2 + 4 * (mw + 1.4), H - 52, 13.9, 15
 bg.add_patch(patches.Rectangle((gx, gy), gw_, gh_, fc="white", ec=GREY_D, lw=0.7, zorder=2))
-boxes_log.append((bg.text(gx + gw_ / 2, gy + gh_ - 3.3, "GitHub", fontsize=T_BODY, fontweight="bold", ha="center", va="center", zorder=3), (gx, gy, gw_, gh_)))
+logo(fig, H, "github", gx + 2.6, gy + gh_ - 3.3, 3.2, cy=True)
+boxes_log.append((bg.text(gx + 6.6, gy + gh_ - 3.3, "GitHub", fontsize=T_BODY, fontweight="bold", ha="left", va="center", zorder=3), (gx, gy, gw_, gh_)))
 boxes_log.append((bg.text(gx + gw_ / 2, gy + 6.2, "공개 저장소\n코드, 결과 파일\n처리 매니페스트", fontsize=T_SMALL, ha="center", va="center", color=GREY_M, linespacing=1.3, zorder=3), (gx, gy, gw_, gh_)))
 line(bg, [(X0 + 1.2 + 3 * (mw + 1.4) + mw + 0.3, H - 50.5), (gx, H - 50.5)])
 bg.text(gx + gw_ / 2, gy - 1.2, "매년 1회 검정 후\n결과 반영", fontsize=T_SMALL, ha="center", va="top", color=GREY_M, linespacing=1.25)
@@ -207,22 +216,32 @@ block(bg, 50, H - 64.3, H - 68.6, w=3.2)
 # (3) 서버
 sx, sy, sw, sh = 33, H - 87.8, 34, 17.8
 bg.add_patch(patches.Rectangle((sx, sy), sw, sh, fc=NAVY, ec=NAVY, zorder=2))
-bg.text(sx + sw / 2, sy + sh - 3.2, "FastAPI 서버", fontsize=T_HEAD, fontweight="bold", ha="center", va="center", color="white", zorder=3)
+bg.add_patch(patches.FancyBboxPatch((sx + 6.5, sy + sh - 5.2), sw - 13, 4.0, boxstyle="round,pad=0,rounding_size=0.8", fc="white", ec="none", zorder=3))
+logo(fig, H, "fastapi", sx + 8.0, sy + sh - 3.2, 2.6, cy=True)
+bg.text(sx + sw - 7.6, sy + sh - 3.2, "서버", fontsize=T_HEAD, fontweight="bold", ha="right", va="center", color=NAVY, zorder=4)
 boxes_log.append((bg.text(sx + sw / 2, sy + 6.6, "성과 카드    지도 화소 조회\n형평성 감사    취약 지역 노출\n설명 대화    보고 일정", fontsize=T_SMALL, ha="center", va="center", color="white", linespacing=1.6, zorder=3), (sx, sy, sw, sh)))
 vx, vw = gx - 4.0, gw_ + 4.0
-proc(bg, vx, H - 84.5, vw, 11.0, "Vercel\nGitHub 연동 자동 배포\n읽기 전용 운영", fs=T_SMALL)
+proc(bg, vx, H - 84.5, vw, 11.0, "\nGitHub 연동 자동 배포\n읽기 전용 운영", fs=T_SMALL)
+logo(fig, H, "vercel", vx + vw / 2 - 4.6, H - 84.5 + 8.4, 2.0, cy=True)
 line(bg, [(vx - 0.2, H - 79), (sx + sw + 0.2, H - 79)])
-ext = [("Google Gemini API", "카드 수치만 인용"), ("SGIS, 건축물대장", "형평성 실시간 조회")]
+ext = [("gemini", "API, 카드 수치만 인용"), ("mods", "SGIS, 형평성 조회")]
 for i, (a_, b_) in enumerate(ext):
     yy = H - 76.0 - i * 9.4
-    proc(bg, X0 + 1.2, yy, 19.0, 7.6, f"{a_}\n{b_}", fs=T_SMALL)
+    bg.add_patch(patches.Rectangle((X0 + 1.2, yy), 19.0, 7.6, fc="white", ec=GREY_D, lw=0.7, zorder=2))
+    lh_ = 2.3 if a_ == "gemini" else 2.6
+    logo(fig, H, a_, X0 + 1.2 + 9.5 - lh_ * logo_arr(a_).size[0] / logo_arr(a_).size[1] / 2, yy + 5.3, lh_, cy=True)
+    boxes_log.append((bg.text(X0 + 1.2 + 9.5, yy + 1.9, b_, fontsize=T_SMALL, ha="center", va="center", color=INK, zorder=3), (X0 + 1.2, yy, 19.0, 7.6)))
     line(bg, [(sx - 0.2, yy + 3.8), (X0 + 1.2 + 19.0 + 0.2, yy + 3.8)])
 # GitHub → Vercel 점선(자동 배포)
 line(bg, [(gx + gw_ / 2, gy - 5.8), (gx + gw_ / 2, H - 73.4)], color=GREY_M, lw=0.9, ls=(0, (3, 2)))
 block(bg, 50, H - 90.4, H - 94.6, w=3.2)
 # (4) 화면
-proc(bg, X0 + 1.2, 25.5, 19.5, 8.0, "MapLibre 3D 지도\n지형, 위성, 건물", fs=T_SMALL)
-proc(bg, X0 + 1.2, 14.0, 19.5, 8.0, "AWS 지형 타일\nEsri 위성, OpenFreeMap", fs=T_SMALL, fc="#F7F7F7")
+bg.add_patch(patches.Rectangle((X0 + 1.2, 25.5), 19.5, 8.0, fc="white", ec=GREY_D, lw=0.7, zorder=2))
+logo(fig, H, "maplibre", X0 + 2.4, 29.5, 4.4, cy=True)
+boxes_log.append((bg.text(X0 + 7.6, 29.5, "MapLibre\n3D 지도, 지형,\n위성, 건물", fontsize=T_SMALL, ha="left", va="center", color=INK, linespacing=1.25, zorder=3), (X0 + 1.2, 25.5, 19.5, 8.0)))
+bg.add_patch(patches.Rectangle((X0 + 1.2, 14.0), 19.5, 8.0, fc="#F7F7F7", ec=GREY_D, lw=0.7, zorder=2))
+logo(fig, H, "aws", X0 + 2.4, 18.0, 3.0, cy=True, bgc="#F7F7F7")
+boxes_log.append((bg.text(X0 + 8.3, 18.0, "지형 타일\nEsri 위성,\nOpenFreeMap", fontsize=T_SMALL, ha="left", va="center", color=INK, linespacing=1.25, zorder=3), (X0 + 1.2, 14.0, 19.5, 8.0)))
 line(bg, [(X0 + 11, 22.2), (X0 + 11, 25.4)])
 outs = [("성과 카드", "담당자 화면"), ("관할 요약", "과장, 의회 화면"), ("보고서 부록", "인쇄용 카드")]
 for i, (a_, b_) in enumerate(outs):

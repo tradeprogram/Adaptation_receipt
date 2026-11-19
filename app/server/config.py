@@ -35,7 +35,7 @@ KEYS = {
     "GEMINI_MODEL": os.getenv("GEMINI_MODEL", "gemini-3.8-flash"),
     # 건축물대장 표제부 (공공데이터포털, 서비스: 1613000/BldRgstHubService) — 형평성 감사(노후도·구조)
     "DATA_GO_KR_SERVICE_KEY": os.getenv("DATA_GO_KR_SERVICE_KEY", ""),
-    # 통계청 SGIS OpenAPI — 고령·1인가구 격자/집계구 통계
+    # 국가데이터처 SGIS OpenAPI — 고령·1인가구 격자/집계구 통계
     "SGIS_CONSUMER_KEY": os.getenv("SGIS_CONSUMER_KEY", ""),
     "SGIS_CONSUMER_SECRET": os.getenv("SGIS_CONSUMER_SECRET", ""),
     # 브이월드 — 건물 footprint WFS(처리구/대조구 외곽선)

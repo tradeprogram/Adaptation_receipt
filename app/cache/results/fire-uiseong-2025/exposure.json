@@ -3,7 +3,7 @@
  "project_id": "fire-uiseong-2025",
  "computed_at": "2026-11-19T18:12:15",
  "hazard_label": "피해 산림",
- "source": "통계청 SGIS 2023 읍면동 인구 통계와 행정구역 경계, 피해·침수 화소는 위성 검증 결과",
+ "source": "국가데이터처 SGIS 2023 읍면동 인구 통계와 행정구역 경계, 피해·침수 화소는 위성 검증 결과",
  "n_areas": 29,
  "n_hit": 28,
  "hazard_ha": 31920.5,
