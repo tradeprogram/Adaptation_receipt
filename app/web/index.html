@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="ink.css?v=5">
 <link rel="stylesheet" href="layout.css?v=8">
 <link rel="stylesheet" href="print3d.css?v=6">
-<link rel="stylesheet" href="glass.css?v=3">
+<link rel="stylesheet" href="glass.css?v=4">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -170,11 +170,13 @@
         <div class="note-actions">
           <a id="btnCard" class="act act-primary" target="_blank" rel="noopener" title="이행점검 보고서에 붙이는 성과 카드(인쇄용)"><svg><use href="#i-print"/></svg><span>보고서 부록</span></a>
           <button id="btnVerify" class="act"><svg><use href="#i-stamp"/></svg><span>다시 검정</span></button>
+          <button id="btnLink" class="act" type="button" title="인쇄 카드의 공개 주소 복사"><span>링크 복사</span></button>
         </div>
       </div>
       <div id="jobBar" class="jobbar" hidden><i id="jobFill"></i><span class="num" id="jobText"></span></div>
 
       <section class="summary" id="summary">
+        <div class="dlevel" id="dlevel" hidden><b></b><span></span></div>
         <h2 class="sum-head" id="sumHead"></h2>
         <ul class="sum-points" id="sumPoints"></ul>
         <div class="keynums" id="keyNums"></div>
@@ -190,7 +192,7 @@
       </section>
 
       <section class="ledger" id="equityBlock">
-        <h2>누가 혜택을 받았나 <small>수혜 건물과 관할 전체 비교</small></h2>
+        <h2>취약계층과 형평성 <small id="equitySub">수혜 건물과 관할 전체 비교</small></h2>
         <div id="equityBody"></div>
       </section>
 
@@ -282,7 +284,16 @@
   <section id="viewKeys" class="sheet-body alt" hidden>
     <div class="alt-inner">
       <h2 class="alt-title">자료 연결</h2>
-      <p class="lead">위성 자료는 키 없이 동작. 아래 키는 형평성 감사와 설명 대화에 사용, 미설정 시 해당 항목은 키 필요로 표시</p>
+      <p class="lead">실제 공개 자료만 사용. 가상값으로 채우지 않으며, 자료가 없으면 측정 불가로 표시</p>
+      <table class="tbl srctbl">
+        <tr><th>구분</th><th>자료</th><th>제공 기관</th><th>사용처</th></tr>
+        <tr><td>재난안전데이터 공유 플랫폼</td><td>무더위쉼터 현황(DSSP-IF-10942)</td><td>행정안전부</td><td>열 사업 범위 안 쉼터 위치와 수용 인원</td></tr>
+        <tr><td>기상청 자료</td><td>API허브 지상관측(ASOS) 시간강우</td><td>기상청</td><td>호우 사건 자동 추출, 비의 세기 보정(부여 관측소 236)</td></tr>
+        <tr><td>위성 관측 빅데이터</td><td>Sentinel-1 레이더, Sentinel-2 광학, Landsat 8/9 열적외</td><td>ESA, USGS(Microsoft Planetary Computer)</td><td>침수 범위, 산불 피해와 식생 회복, 지표면온도</td></tr>
+        <tr><td>국가 통계</td><td>SGIS 읍면동 인구 통계와 행정구역 경계</td><td>통계청</td><td>고령화지수와 노년부양비, 취약 지역 노출 분석</td></tr>
+        <tr><td>건축 행정</td><td>건축물대장 표제부(공공데이터포털), 브이월드 건물 외곽선</td><td>국토교통부</td><td>수혜 건물 노후도와 세대수, 시공 동과 비교 동 외곽선</td></tr>
+      </table>
+      <h3 class="sub-h">연동 키 상태 <small>위성 자료는 키 없이 동작, 아래 키는 형평성 감사와 설명 대화에 사용</small></h3>
       <table class="tbl" id="keysTable"></table>
       <p class="meta">키는 <code>app/.env</code>에 입력 후 서버 재시작</p>
     </div>
@@ -293,7 +304,7 @@
 
 <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="dashboard.js?v=21"></script>
+<script src="dashboard.js?v=23"></script>
 <script src="chat.js?v=4"></script>
 </body>
 </html>

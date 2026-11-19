@@ -10,6 +10,8 @@
   const OV_LABEL = { dnbr: "피해등급", pre: "산불 전", post: "진화 직후", lst_before: "시공 전 온도", lst_after: "시공 후 온도", lst_diff: "전후 차이", flood_before: "정비 전 침수", flood_after: "정비 후 침수", flood_change: "전후 비교", none: "없음" };
   const PAIRS = [["pre", "post", "산불 전", "진화 직후"], ["lst_before", "lst_after", "시공 전", "시공 후"], ["flood_before", "flood_after", "정비 전", "정비 후"]];
   const SEV_COLORS = ["#f7e26b", "#f29e2e", "#d7301f", "#7a0177"];
+  const AGING_STOPS = ["#f6f1e4", "#e9cf9c", "#cf9a5a", "#9a6421", "#5a3412"];
+  OV_LABEL.aging = "읍면 고령화";
   // 지표 장부의 항목 이름. 키는 JSON(재현용)에 남고 화면에는 한글만 적는다
   const KEY_LABEL = {
     burned_forest_ha: "피해 산림 면적", control_ha: "비교 구역(주변 숲) 면적", recovery_ratio_latest: "회복률(피해지 ÷ 주변 숲)", did_effect_ndvi: "주변 숲 대비 변화(식생지수)", ci95_median_diff: "오차 범위(95%)", mde_ndvi: "알아볼 수 있는 최소 변화(식생지수)", valid_pct_min: "구름 없는 화소 비율(최소)",
@@ -138,6 +140,14 @@
       pts.push({ type: "Feature", properties: { kind: "station", html: `<b>기상청 ${st.name} 관측소 (${st.stn})</b><span class="sub">호우 사건을 뽑은 시간강우 지점</span>${evs}` }, geometry: { type: "Point", coordinates: [st.lon, st.lat] } });
     }
     map.getSource("pts").setData({ type: "FeatureCollection", features: pts });
+    const ex = card?.exposure;
+    if (ex) {
+      if (!map.getSource("expo")) {
+        map.addSource("expo", { type: "geojson", data: ex.geojson });
+        map.addLayer({ id: "expo-fill", type: "fill", source: "expo", layout: { visibility: "none" }, paint: { "fill-color": ["interpolate", ["linear"], ["get", "aged_idx"], 300, AGING_STOPS[0], 850, AGING_STOPS[1], 1400, AGING_STOPS[2], 1950, AGING_STOPS[3], 2500, AGING_STOPS[4]], "fill-opacity": 0.62 } }, "tc-fill");
+        map.addLayer({ id: "expo-line", type: "line", source: "expo", layout: { visibility: "none" }, paint: { "line-color": "#ffffff", "line-width": 1.1, "line-opacity": 0.9 } }, "tc-fill");
+      } else map.getSource("expo").setData(ex.geojson);
+    } else if (map.getSource("expo")) map.getSource("expo").setData({ type: "FeatureCollection", features: [] });
   }
 
   // ---------- 오버레이·범례 ----------
@@ -151,15 +161,17 @@
     document.querySelectorAll("#timeline .frame").forEach((x) => x.classList.toggle("is-active", x.dataset.ov === name));
     const Lcur = legendOf(mod, name); if (Lcur?.date) highlightSeries(Lcur.date);
     if (state.compare) { disableCompare(false); }
+    if (map.getLayer("expo-fill")) map.setLayoutProperty("expo-fill", "visibility", name === "aging" ? "visible" : "none");
+    if (map.getLayer("expo-line")) map.setLayoutProperty("expo-line", "visibility", name === "aging" ? "visible" : "none");
     if (!mod || name === "none" || !mod.overlays[name]) return;
     addOverlayTo(map, "overlay", mod.overlays[name] + "?t=" + Date.now(), mod.overlays.bounds, +$("#opacity").value / 100);
   }
   function renderLegend(mod, key) {
-    const box = $("#legend"); const L = legendOf(mod, key);
+    const box = $("#legend"); const L = key === "aging" ? { label: "읍면 고령화지수", type: "ramp", min: 300, max: 2500, unit: "", stops: AGING_STOPS, note: "65세 이상 인구 ÷ 0~14세 인구 × 100, 통계청 SGIS 2023. 읍면을 누르면 피해·침수 면적 표시" } : legendOf(mod, key);
     if (!L || key === "none") { box.hidden = true; return; }
     let body = "";
     if (L.type === "classes") body = `<div class="lg-items">${L.items.map((i) => `<span class="lg-item"><i class="sw" style="background:${i.c}"></i>${i.t}</span>`).join("")}</div>`;
-    else if (L.type === "ramp") body = `<div class="ramp" style="background:linear-gradient(90deg,${L.stops.join(",")})"></div><div class="ramp-ticks"><span>${L.min}${L.unit || ""}</span><span>${((L.min + L.max) / 2).toFixed(L.unit === "℃" ? 0 : 1)}${L.unit || ""}</span><span>${L.max}${L.unit || ""}</span></div>`;
+    else if (L.type === "ramp") body = `<div class="ramp" style="background:linear-gradient(90deg,${L.stops.join(",")})"></div><div class="ramp-ticks"><span>${L.min}${L.unit || ""}</span><span>${((L.min + L.max) / 2).toFixed(L.unit === "℃" || Math.abs(L.max) >= 100 ? 0 : 1)}${L.unit || ""}</span><span>${L.max}${L.unit || ""}</span></div>`;
     else body = L.text ? `<span class="lg-note" style="margin-top:0">${L.text}</span>` : "";
     box.innerHTML = `<span class="lg-title">${L.label || OV_LABEL[key] || key}</span>${body}${L.note ? `<span class="lg-note">${L.note}</span>` : ""}`;
     box.hidden = false;
@@ -170,6 +182,7 @@
     if (has && mod.overlays.opacity != null) $("#opacity").value = Math.round(mod.overlays.opacity * 100);
     if (!has) { if (map.getLayer("overlay")) { map.removeLayer("overlay"); map.removeSource("overlay"); } $("#legend").hidden = true; return; }
     if (!ovKeys(mod).includes(state.overlay) && state.overlay !== "none") state.overlay = (mod.overlays.default && keys.includes(mod.overlays.default)) ? mod.overlays.default : keys[0];
+    if (state.card?.exposure) keys.push("aging");
     seg.innerHTML = [...keys, "none"].map((k) => `<button class="seg-btn${k === state.overlay ? " is-active" : ""}" data-ov="${k}">${ovLabel(mod, k)}</button>`).join("");
     $("#btnCompare").hidden = !PAIRS.some((pr) => mod.overlays[pr[0]] && mod.overlays[pr[1]]);
     renderTimeline(mod);
@@ -214,6 +227,10 @@
   // 클릭 지점의 값: 서버의 격자(layers.npz)에서 읽는다
   async function queryPixel(lngLat) {
     const mod = state.card?.modules?.find((m) => m.overlays); const key = state.overlay;
+    if (key === "aging") {
+      const f = map.queryRenderedFeatures(map.project(lngLat), { layers: ["expo-fill"] })[0]; if (!f) return; const q = f.properties; const lab = state.card.exposure.hazard_label;
+      popup.setLngLat(lngLat).setHTML(`<b>${q.name}</b><span class="q-val">고령화지수 ${Math.round(q.aged_idx).toLocaleString("ko-KR")}</span><span class="sub">노년부양비 ${q.oldage}, 인구 ${Math.round(q.pop).toLocaleString("ko-KR")}</span><span class="sub">${lab} ${(+q.hazard_ha).toLocaleString("ko-KR")} ha, 읍면 면적의 ${q.hazard_pct_of_area}%</span>`).addTo(map); return;
+    }
     if (!mod || key === "none" || !mod.overlays[key]) return;
     const L = legendOf(mod, key); const q = L?.query; if (!q) return;
     let r; try { r = (await api(`/api/projects/${state.current}/query?layer=${q}&lon=${lngLat.lng.toFixed(6)}&lat=${lngLat.lat.toFixed(6)}`)).data; } catch (e) { return; }
@@ -284,6 +301,10 @@
     const a = document.createElement("a"); a.download = `adaptation-receipt_${state.current}_${state.overlay}.png`; a.href = c.toDataURL("image/png"); a.click();
   });
   // 카드 인쇄: 지금 보이는 지면 장면을 인쇄 카드에 싣는다(브라우저 저장소 + 서버가 쓰기 가능하면 결과 폴더)
+  $("#btnLink").addEventListener("click", async () => {
+    if (!state.current) return; const url = `${location.origin}/card/${state.current}`;
+    try { await navigator.clipboard.writeText(url); toast(`공개 카드 주소 복사: ${url}`); } catch (e) { toast(url); }
+  });
   $("#btnCard").addEventListener("click", () => {
     if (!state.card) return;
     try {
@@ -352,8 +373,13 @@
       $("#eventsTable").innerHTML = `<tr><th>사건</th><th>단계</th><th>등급</th><th class="num">첫 관측(시간)</th><th class="num">침수 ha</th></tr>` + mod.events.map((e) => { const key = "flood_evt_" + e.event_peak.slice(0, 10).replaceAll("-", ""); const link = mod.overlays?.[key]; return `<tr${link ? ` class="is-link" data-ov="${key}" title="지도에서 보기"` : ""}><td>${e.name}<span class="sub">${e.event_peak} UTC${e.passes?.[0] ? ", 궤도 " + e.passes[0].relative_orbit : ""}</span></td><td>${e.phase === "before" ? "정비 전" : "정비 후"}</td><td><span class="mark ${e.grade === "C" ? "undetected" : "detected"}">${e.grade}</span></td><td class="num">${e.first_pass_hours ?? "미관측"}</td><td class="num">${e.stage2?.flooded_ha != null ? e.stage2.flooded_ha.toLocaleString("ko-KR") : (e.stage2?.error ? `<span class="sub">${e.stage2.error}</span>` : "—")}</td></tr>`; }).join("");
       $("#eventsTable").querySelectorAll("tr.is-link").forEach((tr) => tr.addEventListener("click", () => { stopPlay(); setOverlay(tr.dataset.ov); }));
     }
-    const eq = c.equity; const eb = $("#equityBody");
-    if (!eq) eb.innerHTML = `<div class="errata">형평성 감사 미실행</div>`;
+    const eq = c.equity; const eb = $("#equityBody"); const ex = c.exposure;
+    $("#equitySub").textContent = ex ? "피해 지역의 고령 지표, 읍면 단위" : "수혜 건물과 관할 전체 비교";
+    if (ex) {
+      const n0 = (v) => v == null ? "측정 불가" : Math.round(v).toLocaleString("ko-KR");
+      eb.innerHTML = `<ul class="sum-points"><li>${ex.hazard_label} 면적 ${n0(ex.hazard_ha)} ha 가운데 ${Math.round(ex.share_in_high_aging * 100)}%가 고령화지수 중앙값(${n0(ex.median_aged_idx)}) 이상 읍면에 분포</li><li>${ex.hazard_label} 면적 가중 고령화지수 ${n0(ex.exposed_aged_idx)}, 분석 범위 ${ex.n_areas}개 읍면 인구 가중 ${n0(ex.ref_aged_idx)}</li><li>노년부양비 ${ex.exposed_oldage} 대 ${ex.ref_oldage}</li></ul>`
+        + `<table class="tbl"><tr><th>읍면</th><th class="num">${ex.hazard_label} ha</th><th class="num">고령화지수</th><th class="num">노년부양비</th></tr>` + ex.top.map((t) => `<tr><td>${t.name}<span class="sub">인구 ${n0(t.pop)}, 읍면 면적의 ${t.hazard_pct_of_area}%</span></td><td class="num">${n0(t.hazard_ha)}</td><td class="num">${n0(t.aged_idx)}</td><td class="num">${t.oldage ?? "측정 불가"}</td></tr>`).join("") + `</table><p class="meta">${ex.source}. 지도의 '읍면 고령화'로 분포 확인</p>`;
+    } else if (!eq) eb.innerHTML = `<div class="errata">형평성 감사 미실행</div>`;
     else if (eq.status !== "ok") eb.innerHTML = `<div class="errata">${eq.warnings.join("<br>")}</div><p class="meta">지표: ${eq.data.design.indicators.join(", ")}</p>`;
     else {
       eb.innerHTML = `<table class="tbl">${Object.entries(eq.data.metrics).map(([k, m]) => `<tr><td>${label(k)}</td><td class="num">${fmt(m.value, m.unit)}</td><td><span class="src ${m.badge}">${SRC[m.badge]}</span></td></tr>`).join("")}</table>`;
@@ -486,6 +512,7 @@
   // ---------- 담당자 요약(쉬운 말) ----------
   const fmtKey = (k) => k.value == null ? `<b class="none">측정 불가</b>` : `<b>${k.signed && k.value > 0 ? "+" : ""}${k.value.toLocaleString("ko-KR")}${k.unit ? `<small>${k.unit}</small>` : ""}</b>`;
   function renderSummary(mod) {
+    const dl = mod.design_level; $("#dlevel").hidden = !dl; if (dl) { $("#dlevel").className = `dlevel ${dl.code}`; $("#dlevel b").textContent = dl.level; $("#dlevel span").textContent = dl.text; }
     const s = mod.summary || {}; $("#sumHead").textContent = s.headline || VERDICT[mod.verdict?.code] || ""; $("#sumPoints").innerHTML = (s.points || []).map((p) => `<li>${p}</li>`).join(""); $("#sumPoints").hidden = !(s.points || []).length;
     $("#keyNums").innerHTML = (s.key || []).map((k) => `<div class="keynum">${fmtKey(k)}<span>${k.label}</span></div>`).join(""); $("#keyNums").hidden = !(s.key || []).length;
     $("#nextList").innerHTML = (s.next || []).map((n) => `<li>${n}</li>`).join(""); $("#nextBlock").hidden = !(s.next || []).length;
@@ -509,7 +536,9 @@
       return `<tr class="is-link" data-id="${p.id}"><td><b>${p.name}</b><span class="sub">${p.agency || ""}${p.region ? ", " + p.region : ""}</span></td><td>${TYPE_LABEL[p.type]}</td><td>${p.period || ""}</td><td class="num">${p.budget_krw ? (p.budget_krw / 1e8).toLocaleString("ko-KR", { maximumFractionDigits: 1 }) + "억" : "—"}</td><td><span class="mark ${code(r)}">${VERDICT[code(r)] || code(r)}</span><span class="sub">${r.s.headline || ""}</span></td><td>${k}</td><td>${(r.s.next || [])[0] || ""}</td></tr>`; }).join("");
     tb.querySelectorAll("tr.is-link").forEach((tr) => tr.addEventListener("click", () => { showView("dashboard"); selectProject(tr.dataset.id); }));
     const eqRows = rows.filter((r) => r.c.equity?.status === "ok" && r.c.equity.data.reallocation?.rows?.length);
-    $("#sumEquity").textContent = eqRows.map((r) => { const ra = r.c.equity.data.reallocation; const t = ra.rows.filter((x) => x.status === "treated"); const first = ra.rows[0]; return `${r.c.project.name}: 세대 밀도 기준 1순위 ${first.dong}(${first.households}세대), 실제 시공 ${t.map((x) => x.dong).join(", ")}은 ${t.map((x) => x.rank + "순위").join(", ")}`; }).join(". ");
+    const exRows = rows.filter((r) => r.c.exposure);
+    const exText = exRows.map((r) => { const e = r.c.exposure; return `${r.c.project.name}: ${e.hazard_label} 면적의 ${Math.round(e.share_in_high_aging * 100)}%가 고령화 상위 읍면, ${e.hazard_label} 가중 고령화지수 ${Math.round(e.exposed_aged_idx).toLocaleString("ko-KR")}(범위 평균 ${Math.round(e.ref_aged_idx).toLocaleString("ko-KR")})`; });
+    $("#sumEquity").textContent = [...exText, ...eqRows.map((r) => { const ra = r.c.equity.data.reallocation; const t = ra.rows.filter((x) => x.status === "treated"); const first = ra.rows[0]; return `${r.c.project.name}: 세대 밀도 기준 1순위 ${first.dong}(${first.households}세대), 실제 시공 ${t.map((x) => x.dong).join(", ")}은 ${t.map((x) => x.rank + "순위").join(", ")}`; })].join(". ");
   }
 
   // ---------- 새 사업 등록 ----------

@@ -163,3 +163,9 @@ a{color:var(--g-accent)}
   .margin-bottom{padding-left:16px;margin-bottom:110px}
 }
 @media print{ body{background:#fff} .margin-top,.margin-left,.margin-right,.margin-bottom{backdrop-filter:none;box-shadow:none;background:#fff} }
+
+/* 설계 수준 표시와 자료 출처 표 */
+.dlevel{font-size:12px;color:var(--g-ink-3);margin:0 0 6px;line-height:1.5}
+.dlevel b{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;margin-right:6px;color:#fff;background:linear-gradient(160deg,var(--g-accent-2),var(--g-accent-deep))}
+.dlevel.change b{background:linear-gradient(160deg,#c48a3e,#9a6421)}
+.srctbl{margin:4px 0 18px} .srctbl td:first-child{font-weight:600;white-space:nowrap}

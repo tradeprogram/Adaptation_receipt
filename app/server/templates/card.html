@@ -36,6 +36,7 @@
   .warn{border:1px solid var(--seal);background:var(--slip);color:var(--seal);padding:8px 12px;font-size:12px}
   details summary{cursor:pointer}
   .sum{margin:6px 0 10px;padding:12px 14px;border:1px solid var(--rule);background:#fff}
+  .dlevel{font-size:11.5px;color:var(--muted);margin-bottom:6px}.dlevel b{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;margin-right:6px;color:#fff;background:#3f6b66}.dlevel.change b{background:#9a6421}
   .sum-head{font-size:16px;font-weight:700;line-height:1.35}.sum-points{margin:6px 0 0 18px;padding:0;font-size:12.5px;line-height:1.6}.sum-points li{margin:1px 0}
   .keynums{display:grid;grid-template-columns:repeat(3,1fr);margin:10px 0 0;border-top:1px solid var(--rule)}.keynums div{padding:8px 6px 6px;border-right:1px solid #ddd}.keynums div:last-child{border-right:0}
   .keynums b{display:block;font-size:20px;font-family:"Courier Prime",monospace}.keynums small{font-size:11px;font-weight:400}.keynums span{font-size:11px;color:var(--muted)}
@@ -69,6 +70,7 @@
   <h2>{{ m.label }}</h2>
   {% set s = m.summary %}
   <div class="sum">
+    {% if m.design_level %}<div class="dlevel {{ m.design_level.code }}"><b>{{ m.design_level.level }}</b> {{ m.design_level.text }}</div>{% endif %}
     <div class="sum-head">{{ s.headline }}</div>
     {% if s.points %}<ul class="sum-points">{% for p in s.points %}<li>{{ p }}</li>{% endfor %}</ul>{% endif %}
     {% if s.key %}<div class="keynums">{% for k in s.key %}<div><b>{% if k.value is none %}측정 불가{% else %}{% if k.signed and k.value > 0 %}+{% endif %}{{ "{:,}".format(k.value) }}{% if k.unit %} <small>{{ k.unit }}</small>{% endif %}{% endif %}</b><span>{{ k.label }}</span></div>{% endfor %}</div>{% endif %}
@@ -103,8 +105,17 @@
   {% if m.limitations %}<div style="margin-top:8px"><b style="font-size:12px">유의할 점</b><ul>{% for l in m.limitations %}<li>{{ l }}</li>{% endfor %}</ul></div>{% endif %}
   {% endfor %}
 
-  <h2>누가 혜택을 받았나 <span style="font-weight:400;font-size:12px;color:var(--muted)">형평성 감사</span></h2>
-  {% if card.equity %}
+  <h2>취약계층과 형평성 <span style="font-weight:400;font-size:12px;color:var(--muted)">{{ "취약 지역 노출" if card.exposure else "형평성 감사" }}</span></h2>
+  {% if card.exposure %}{% set ex = card.exposure %}
+    <ul class="sum-points">
+      <li>{{ ex.hazard_label }} 면적 {{ "{:,.0f}".format(ex.hazard_ha) }} ha 가운데 {{ "%.0f"|format(ex.share_in_high_aging * 100) }}%가 고령화지수 중앙값({{ "{:,.0f}".format(ex.median_aged_idx) }}) 이상 읍면에 분포</li>
+      <li>{{ ex.hazard_label }} 면적 가중 고령화지수 {{ "{:,.0f}".format(ex.exposed_aged_idx) }}, 분석 범위 {{ ex.n_areas }}개 읍면 인구 가중 {{ "{:,.0f}".format(ex.ref_aged_idx) }}</li>
+      <li>노년부양비 {{ ex.exposed_oldage }} 대 {{ ex.ref_oldage }}</li>
+    </ul>
+    <table style="margin-top:6px"><tr><th>읍면</th><th class="num">{{ ex.hazard_label }} ha</th><th class="num">읍면 면적 대비 %</th><th class="num">고령화지수</th><th class="num">노년부양비</th><th class="num">인구</th></tr>
+    {% for t in ex.top %}<tr><td>{{ t.name }}</td><td class="num">{{ "{:,.0f}".format(t.hazard_ha) }}</td><td class="num">{{ t.hazard_pct_of_area }}</td><td class="num">{{ "{:,.0f}".format(t.aged_idx) if t.aged_idx is not none else "측정 불가" }}</td><td class="num">{{ t.oldage if t.oldage is not none else "측정 불가" }}</td><td class="num">{{ "{:,.0f}".format(t["pop"]) if t["pop"] is not none else "" }}</td></tr>{% endfor %}</table>
+    <div style="font-size:11px;color:var(--muted)">{{ ex.source }}. 개인 단위 식별 없음, 읍면 단위 집계.</div>
+  {% elif card.equity %}
     {% if card.equity.status != "ok" %}<div class="warn">{{ card.equity.warnings|join(" / ") }}</div>
     <div style="font-size:12px;color:var(--muted);margin-top:6px">지표 설계: {{ card.equity.data.design.indicators|join(", ") }}, 단위 {{ card.equity.data.design.unit }}</div>
     {% else %}
@@ -117,7 +128,7 @@
     {% endif %}
   {% else %}<div class="warn">형평성 감사 미실행</div>{% endif %}
 
-  <div class="foot">{{ card.disclaimer }} 자료: Copernicus Sentinel-1/2 (ESA), Landsat 8/9 (USGS) via Microsoft Planetary Computer; 공공데이터포털; 통계청 SGIS.</div>
+  <div class="foot">{{ card.disclaimer }} 자료: 위성 Copernicus Sentinel-1/2(ESA), Landsat 8/9(USGS), Microsoft Planetary Computer 경유. 기상청 API허브 지상관측 시간강우. 행정안전부 재난안전데이터 공유 플랫폼 무더위쉼터. 통계청 SGIS 인구 통계와 행정구역 경계. 국토교통부 건축물대장(공공데이터포털), 브이월드 건물 외곽선.</div>
 </div>
 <script>
   // 대시보드가 브라우저 저장소에 남긴 장면(읽기 전용 배포본에서는 서버에 저장하지 못한다)

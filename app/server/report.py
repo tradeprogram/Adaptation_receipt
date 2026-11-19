@@ -101,6 +101,31 @@ def plain_summary(m: str, r: dict) -> dict:
     return {"code": code, "verdict_plain": PLAIN_VERDICT.get(code, code), "headline": head, "points": pts, "explain": " ".join(p + "." for p in pts), "key": key, "next": nxt}
 
 
+def design_level(project: dict, m: str) -> dict:
+    """검증 설계 수준. 사업 구역 대 비교 구역이 갖춰졌는지에 따라 '사업 효과 검증'과 '현장 변화 분석'을 구분해 카드에 밝힌다."""
+    g = project.get("geometry") or {}
+    if m == "heat" and g.get("treated") and g.get("control"):
+        return {"code": "effect", "level": "사업 효과 검증", "text": "시공 동 대 비교 동, 시공 전후 이중차분"}
+    if m == "fire":
+        if g.get("treated"):
+            return {"code": "effect", "level": "사업 효과 검증", "text": "복원 구역 대 자연복원 구역, 피해 전후 비교"}
+        return {"code": "change", "level": "현장 변화 분석", "text": "피해지 대 인접 미피해 숲 비교. 복원 구역 경계 결합 시 사업 효과 검증으로 전환"}
+    if m == "flood":
+        if g.get("treated"):
+            return {"code": "effect", "level": "사업 효과 검증", "text": "정비 지구 대 미정비 지구, 정비 전후 비교"}
+        return {"code": "change", "level": "현장 변화 분석", "text": "분석 범위 전체의 정비 전후 침수 비교, 강우 강도 보정. 배수개선지구 경계 결합 시 사업 효과 검증으로 전환"}
+    return {"code": "change", "level": "현장 변화 분석", "text": ""}
+
+
+def load_exposure(pid: str) -> dict | None:
+    import json as _json
+    p = config.RESULTS_DIR / pid / "exposure.json"
+    if not p.exists():
+        return None
+    r = _json.loads(p.read_text(encoding="utf-8"))
+    return r if r.get("status") == "ok" else None
+
+
 def build_card(project: dict, results: dict[str, dict | None], equity: dict | None) -> dict:
     modules = []
     for m, r in results.items():
@@ -117,13 +142,25 @@ def build_card(project: dict, results: dict[str, dict | None], equity: dict | No
     eq = None
     if equity is not None:
         eq = {"status": equity["status"], "warnings": equity["warnings"], "data": equity["data"]}
+    for md in modules:
+        md["design_level"] = design_level(project, md["module"])
+    expo = load_exposure(project["id"])
+    if expo and modules and modules[0].get("summary"):
+        s = modules[0]["summary"]; lab = expo["hazard_label"]
+        s["points"] = list(s.get("points") or []) + [f"{lab} 면적의 {expo['share_in_high_aging'] * 100:.0f}%가 고령화지수 중앙값 이상 읍면에 분포, {lab} 가중 고령화지수 {expo['exposed_aged_idx']:,.0f}(분석 범위 인구 가중 {expo['ref_aged_idx']:,.0f})"]
+        top3 = ", ".join(t["name"].split(" ")[-1] for t in sorted(expo["top"], key=lambda t: -(t["aged_idx"] or 0) * t["hazard_ha"])[:3])
+        if project["type"] == "fire":
+            s["next"] = list(s.get("next") or []) + [f"고령 인구 비중이 높고 피해 면적이 큰 {top3} 우선 복구와 주민 지원 검토"]
+        elif project["type"] == "flood":
+            s["next"] = list(s.get("next") or []) + [f"정비 후 침수 구역 가운데 고령 읍면({top3}) 현장 확인 우선"]
+        s["explain"] = " ".join(p + "." for p in s["points"])
     snap = None
     sp = config.RESULTS_DIR / project["id"] / "snapshot.json"
     if sp.exists() and (config.RESULTS_DIR / project["id"] / "snapshot.jpg").exists():
         import json as _json
         meta = _json.loads(sp.read_text(encoding="utf-8"))
         snap = {"url": f"/api/projects/{project['id']}/snapshot.jpg", "caption": meta.get("caption", ""), "at": meta.get("at", "")}
-    return {"snapshot": snap, "project": {k: project.get(k) for k in ("id", "name", "type", "agency", "region", "budget_krw", "period", "legal_basis", "description", "event_date", "contained_date", "geometry", "kma_station")},
+    return {"snapshot": snap, "exposure": expo, "project": {k: project.get(k) for k in ("id", "name", "type", "agency", "region", "budget_krw", "period", "legal_basis", "description", "event_date", "contained_date", "geometry", "kma_station")},
             "generated_at": dt.datetime.now().isoformat(timespec="seconds"), "modules": modules, "equity": eq,
             "badges": BADGE_LABEL, "labels": PLAIN_KEY, "plain_verdict": PLAIN_VERDICT, "disclaimer": "모든 수치에 출처 배지 부착. 측정 불가는 표본 부족 또는 관측 공백을 뜻하며 0이 아님. 효과 미확인은 효과 부재의 증명이 아님."}
 
