@@ -50,7 +50,7 @@
   {% set m0 = card.modules[0] if card.modules else none %}
   {% set code = m0.verdict.code if m0 else 'not_run' %}
   <div class="head">
-    <div><div class="k">적응 영수증, 도엽번호 {{ card.project.id }}</div><h1>{{ card.project.name }}</h1><div class="k" style="text-transform:none;letter-spacing:.04em">기후적응 사업 성과와 형평성 검증 카드, 조제 {{ card.generated_at }}</div></div>
+    <div><div class="k">적응 영수증, 사업 번호 {{ card.project.id }}</div><h1>{{ card.project.name }}</h1><div class="k" style="text-transform:none;letter-spacing:.04em">기후적응 사업 성과와 형평성 검증 카드, 조제 {{ card.generated_at }}</div></div>
     <div class="stamp {{ 'neutral' if code in ['not_run','waiting_input','unmeasured','waiting'] else code }}"><b>{{ card.plain_verdict.get(code, code) }}</b><span>{{ (m0.computed_at or '')[:10] if m0 else '' }} 검정</span></div>
   </div>
   <div class="meta">

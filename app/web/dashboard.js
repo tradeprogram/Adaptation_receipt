@@ -603,7 +603,14 @@
   let toastTimer; function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; t.classList.remove("hide"); clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.classList.add("hide"); setTimeout(() => (t.hidden = true), 220); }, 4200); }
 
   (async () => {
-    try { await Promise.all([loadProjects(), loadCalendar(), loadKeys()]); const first = state.projects.find((p) => p.results?.fire) || state.projects[0]; if (first) selectProject(first.id); }
+    try {
+      await Promise.all([loadProjects(), loadCalendar(), loadKeys()]);
+      // 주소로 화면 지정: ?p=사업ID&view=dashboard|summary|calendar|keys&ov=오버레이(발표용 바로가기 링크)
+      const q = new URLSearchParams(location.search); if (q.get("ov")) state.overlay = q.get("ov");
+      const first = state.projects.find((p) => p.id === q.get("p")) || state.projects.find((p) => p.results?.fire) || state.projects[0];
+      if (first) await selectProject(first.id);
+      if (q.get("view") && q.get("view") !== "dashboard") showView(q.get("view"));
+    }
     catch (e) { toast(`초기화 실패 (${e.message})`); }
   })();
 })();

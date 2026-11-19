@@ -111,10 +111,10 @@ proc(bg, x1, r1, bw, bh, "1. 위성 지표 산출\n식생지수, 지표면온도
 proc(bg, x2, r1, bw, bh, "2. 기준선과 대조구 설정\n같은 궤도, 같은 계절, 인접 구역", fs=T_SMALL)
 # 아래 줄은 오른쪽(3) → 왼쪽(4) 순서로 두어 화살표 흐름 1→2→3→4→조립과 번호가 일치하게 한다
 bg.add_patch(patches.Rectangle((x2, r2), bw, bh, fc="white", ec=GREY_D, lw=0.7, zorder=2))
-hl(bg, x2 + bw / 2, r2 + bh / 2, "3. 이중차분과 신뢰구간\n검출가능최소효과", fs=T_SMALL, ha="center")
+hl(bg, x2 + bw / 2, r2 + bh / 2, "3. 이중차분과 오차 범위\n알아볼 수 있는 최소 변화", fs=T_SMALL, ha="center")
 proc(bg, x1, r2, bw, bh, "4. 형평성 감사\n노후도, 고령 비율, 집행 순위", fs=T_SMALL)
 ny = r2 - gy - 5.4
-proc(bg, x1, ny, 2 * bw + gx, 5.4, "성과 카드 조립\n출처 배지(실측, 계산, 규칙, 가정), 판정(검출, 미검출, 측정 불가)", fs=T_SMALL, fc=NAVY, ec=NAVY, tc="white", weight="bold")
+proc(bg, x1, ny, 2 * bw + gx, 5.4, "성과 카드 조립\n출처 배지(실측, 계산, 규칙, 가정), 판정(효과 확인, 효과 미확인, 측정 불가)", fs=T_SMALL, fc=NAVY, ec=NAVY, tc="white", weight="bold")
 line(bg, [(x1 + bw, r1 + bh / 2), (x2, r1 + bh / 2)])
 line(bg, [(x2 + bw / 2, r1), (x2 + bw / 2, r2 + bh)])
 line(bg, [(x2, r2 + bh / 2), (x1 + bw, r2 + bh / 2)])
@@ -123,7 +123,7 @@ line(bg, [(x1 + bw / 2, r2), (x1 + bw / 2, ny + 5.4)])
 ox, ow = 79, 19
 ry, rh = H - 22.6, 18.0
 bg.add_patch(patches.FancyBboxPatch((ox, ry), ow, rh, boxstyle="round,pad=0,rounding_size=1.0", fc="white", ec=INK, lw=1.8, zorder=2))
-ui = Image.open(OUT / "fig_ui_dashboard.png").convert("RGB").crop((1880, 160, 3160, 1990)); ui.thumbnail((520, 740))
+ui = Image.open(OUT / "shots/ui_fire.png").convert("RGB").crop((895, 75, 1470, 890)); ui.thumbnail((520, 740))
 axr = sub_axes(fig, H, ox + 1.0, ry + 0.9, ow - 2.0, rh - 4.4); axr.imshow(np.asarray(ui), interpolation="antialiased"); axr.axis("off")
 bg.text(ox + ow / 2, ry + rh - 1.8, "성과 카드(영수증)", fontsize=T_BODY, fontweight="bold", color=RED, ha="center", va="center", zorder=5)
 proc(bg, ox, 6.4, ow, 4.6, "이행점검 보고서 부록\n매년 4월 30일 제출", fs=T_SMALL)
