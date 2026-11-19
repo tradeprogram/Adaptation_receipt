@@ -1,0 +1,151 @@
+/* 유리 껍데기(2026-11-19) — sheet.css·ink.css·print3d.css 위에 마지막으로 얹는다.
+   영수증(.note)과 프린터(.printer)는 종이와 기기 그대로 두고, 그 바깥(헤더·사업 목록·지도 도구·하단 탭·보조 보기·대화창)만
+   반투명 흰 패널 한 종류로 통일한다. 색은 기존 종이 톤(따뜻한 회백)에서 벗어나지 않는 중립 바탕, 강조는 잉크 검정과 인주 빨강만. */
+:root{
+  --g-bg:#ecebe6;
+  --g-glass:rgba(255,255,255,.64); --g-glass-strong:rgba(255,255,255,.84); --g-glass-solid:rgba(255,255,255,.94);
+  --g-border:rgba(255,255,255,.78); --g-line:rgba(28,26,23,.10); --g-line-2:rgba(28,26,23,.18);
+  --g-shadow:0 14px 36px rgba(60,55,45,.10),0 2px 6px rgba(30,28,24,.05);
+  --g-shadow-sm:0 6px 16px rgba(60,55,45,.08),0 1px 3px rgba(30,28,24,.05);
+  --g-blur:blur(16px) saturate(1.12);
+  --g-radius:12px; --g-radius-sm:9px;
+  --g-ink:#1c1a17; --g-ink-2:#4a4640; --g-ink-3:#7a746b;
+  --m-top:96px; --m-bottom:70px;
+}
+
+/* ---------- 바탕: 종이 질감 대신 은은한 빛이 도는 중립 바탕 ---------- */
+html{background:var(--g-bg)}
+body{background:
+  radial-gradient(circle at 10% 0%,rgba(196,186,166,.34),transparent 30rem),
+  radial-gradient(circle at 92% 6%,rgba(170,186,194,.34),transparent 28rem),
+  radial-gradient(circle at 60% 100%,rgba(214,206,190,.28),transparent 32rem),
+  linear-gradient(180deg,#f4f2ee 0%,var(--g-bg) 48%,#e8e7e2 100%);
+  background-attachment:fixed;color:var(--g-ink)}
+.sheet{background:transparent;padding:12px 14px;row-gap:12px;column-gap:12px}
+.sheet-body{border:0;margin-right:0;row-gap:12px}
+.margin-top,.margin-bottom{padding-right:0}
+
+/* 잉크 층이 껍데기에 주던 변위·번짐·결 마스크·multiply를 걷는다(영수증은 그대로) */
+.margin-top,.margin-left,.margin-bottom,.note-empty,.alt-inner,.plate-tools,.scalebar,.graticule{filter:none;mix-blend-mode:normal;mask-image:none;-webkit-mask-image:none}
+.maplibregl-canvas{mix-blend-mode:normal}
+.sheet-body,.margin-left,.margin-right{border-color:transparent}
+
+/* ---------- 공통 유리 패널 ---------- */
+.margin-top,.margin-left,.margin-right,.margin-bottom,.alt-inner,.agent,.legend,.timeline,.seg,.opacity,.scalebar,.map-loading span,.cmp-tag,.toast,.maplibregl-ctrl-group{
+  background:var(--g-glass);border:1px solid var(--g-border);box-shadow:var(--g-shadow-sm);
+  backdrop-filter:var(--g-blur);-webkit-backdrop-filter:var(--g-blur)}
+.margin-top,.margin-left,.margin-right,.margin-bottom,.alt-inner,.agent{border-radius:var(--g-radius);box-shadow:var(--g-shadow)}
+
+/* 껍데기 글꼴은 Pretendard 한 가족. 영수증 안(.note)의 소문자 라벨·등폭 숫자는 그대로 */
+.margin-top .k,.margin-left .k,.margin-bottom .k,.plate .k,.alt-inner .k,.agent .k{font-family:var(--font-ui);font-size:11px;letter-spacing:.04em;text-transform:none;font-weight:600;color:var(--g-ink-3)}
+.margin-top .num,.margin-left .num,.margin-bottom .num,.plate .num,.alt-inner .num{font-family:var(--font-ui);font-variant-numeric:tabular-nums;letter-spacing:0}
+
+/* ---------- 헤더 ---------- */
+.margin-top{grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:22px;padding:8px 18px 8px 12px;min-height:0}
+.brand{gap:14px}
+.brand-mark{height:64px;mix-blend-mode:normal}
+.brand-name{font-size:26px;font-weight:800;letter-spacing:-.03em;color:var(--g-ink)}
+.brand-tag{font-family:var(--font-ui);font-size:11px;font-weight:500;letter-spacing:.14em;color:var(--g-ink-3);margin-top:5px}
+.sheet-title{border-left:1px solid var(--g-line-2);padding-left:18px;min-width:0}
+.sheet-title .k{display:block;margin-bottom:2px}
+.sheet-title .v{font-size:15px;font-weight:700;color:var(--g-ink)}
+
+/* ---------- 사업 목록 띠 ---------- */
+.margin-left{border:1px solid var(--g-border);padding:10px 12px;gap:12px;overflow:visible}
+.index{gap:8px}
+.index-tile{background:rgba(255,255,255,.55);border:1px solid var(--g-line);border-radius:var(--g-radius-sm);padding:8px 12px 7px;transition:background 160ms var(--ease),border-color 160ms var(--ease),box-shadow 160ms var(--ease),transform 120ms var(--ease)}
+.index-tile:hover{background:rgba(255,255,255,.8);border-color:var(--g-line-2)}
+.index-tile.is-active{background:var(--g-glass-solid);border:1px solid var(--g-ink);box-shadow:var(--g-shadow-sm)}
+.index:has(.is-active) .index-tile:not(.is-active){opacity:.72}
+.index-tile .code{font-family:var(--font-ui);font-size:10.5px;letter-spacing:.06em;color:var(--g-ink-3)}
+.index-tile .name{font-size:12.5px;color:var(--g-ink)}
+.mark{font-family:var(--font-ui);font-size:11.5px;letter-spacing:0;font-weight:600}
+.new-btn{border-radius:999px;border:1px solid var(--g-ink);background:var(--g-ink);color:#fff;padding:7px 14px;font-weight:600}
+.new-btn:hover{background:#000}
+.deadline{border:0;border-left:1px solid var(--g-line-2);padding:2px 0 2px 14px;margin:0}
+.deadline-name{color:var(--g-ink)}
+
+/* ---------- 지면(지도) ---------- */
+.plate{border-radius:var(--g-radius);overflow:hidden;background:#d9dcd8;box-shadow:var(--g-shadow)}
+.map{inset:0}
+.graticule{display:none}
+.plate-tools{top:14px;left:14px;gap:8px;filter:none}
+.seg,.opacity{border-radius:999px;padding:3px;height:34px;border:1px solid var(--g-border);background:var(--g-glass-strong)}
+.seg+.seg,.seg+.opacity,.opacity+.seg{margin-left:0}
+.seg-btn{border-radius:999px;padding:4px 12px;font-size:12.5px;color:var(--g-ink-2);font-weight:500}
+.seg-btn:hover{background:rgba(28,26,23,.06)}
+.seg-btn.is-active,.seg-btn[aria-pressed="true"]{background:var(--g-ink);color:#fff}
+.seg-3d{border-left:0 !important;margin-left:0;font-family:var(--font-ui);letter-spacing:.02em}
+.seg-3d[aria-pressed="true"]{background:var(--seal);color:#fff}
+#btnPlay[aria-pressed="true"]{background:var(--seal);color:#fff}
+.opacity{padding:0 14px 0 12px} .opacity .k{margin-right:2px} .opacity input{accent-color:var(--g-ink)}
+.seg-select{border:0;background-color:transparent;border-radius:999px;height:auto}
+.legend{right:14px;bottom:44px;border-radius:var(--g-radius-sm);padding:10px 12px;background:var(--g-glass-strong);font-family:var(--font-ui)}
+.legend .lg-title{font-size:12.5px} .legend .sw,.legend .ramp{border-radius:3px;border-color:rgba(28,26,23,.2)}
+.legend .ramp-ticks{font-family:var(--font-ui);font-size:10.5px}
+.plate.compare .legend{left:14px;bottom:44px}
+.timeline{bottom:14px;border-radius:999px;padding:6px 16px 5px;background:var(--g-glass-strong)}
+.tl-title{font-family:var(--font-ui);font-size:11px;letter-spacing:.04em;text-transform:none;font-weight:600;border-right-color:var(--g-line-2)}
+.tl-track::before{border-top-color:var(--g-line-2)}
+.timeline .frame{font-family:var(--font-ui)} .timeline .frame i{border-color:var(--g-ink-2);background:#fff}
+.timeline .frame.is-active i{background:var(--seal);border-color:var(--seal)}
+.scalebar{left:14px;bottom:14px;border-radius:999px;padding:4px 12px 4px 10px;background:var(--g-glass-strong)}
+.scalebar i{border-color:var(--g-ink);background:linear-gradient(90deg,var(--g-ink) 0 50%,transparent 50%) left top/100% 3px no-repeat}
+.cursor-pos{display:none}
+.map-loading{inset:0;background:rgba(236,235,230,.35)} .map-loading span{border-radius:999px;font-family:var(--font-ui);letter-spacing:.04em;text-transform:none;padding:6px 14px}
+.cmp{inset:0} .cmp-tag{border-radius:999px;font-family:var(--font-ui);letter-spacing:.02em;text-transform:none;font-weight:600;padding:4px 12px;top:62px}
+.cmp-handle{border-left-color:#fff} .cmp-handle i{border-color:var(--g-ink);box-shadow:var(--g-shadow-sm)}
+.maplibregl-ctrl-top-right{top:14px;right:14px}
+.maplibregl-ctrl-group{border-radius:var(--g-radius-sm);overflow:hidden;border:1px solid var(--g-border);background:var(--g-glass-strong)}
+.maplibregl-ctrl-group button{border-radius:0} .maplibregl-ctrl-group button+button{border-top:1px solid var(--g-line)}
+.map .maplibregl-ctrl-attrib{font-family:var(--font-ui);border-radius:999px;background:rgba(255,255,255,.7);margin:0 0 6px 6px;font-size:10px}
+.maplibregl-ctrl-bottom-right{right:14px;bottom:6px}
+.maplibregl-popup-content{border-radius:var(--g-radius-sm);box-shadow:var(--g-shadow);font-family:var(--font-ui)}
+.maplibregl-popup-content .q-val{font-family:var(--font-ui)}
+
+/* ---------- 오른쪽: 유리 패널 안에 프린터와 영수증 ---------- */
+.margin-right{border:1px solid var(--g-border);padding:0 14px 16px !important;background:var(--g-glass)}
+.printer{margin:0 -14px 12px}
+.printer svg{height:60px;border-radius:var(--g-radius) var(--g-radius) 0 0}
+.note-empty{padding:18px 4px 0} .note-empty p{color:var(--g-ink-2)}
+
+/* ---------- 하단: 탭과 출처 ---------- */
+.margin-bottom{padding:8px 16px 8px 124px;display:flex;align-items:center;min-height:0}
+.colophon{width:100%}
+.sheet-nav{border:0;background:rgba(28,26,23,.06);border-radius:999px;padding:3px;gap:2px}
+.tab{border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:500;color:var(--g-ink-2)}
+.tab:hover{background:rgba(255,255,255,.7)}
+.tab.is-active{background:var(--g-ink);color:#fff;font-weight:600;box-shadow:0 6px 14px rgba(28,26,23,.18)}
+.credits{font-size:11px;color:var(--g-ink-3)} #colophonRight{font-size:11px;color:var(--g-ink-3)}
+
+/* ---------- 보조 보기(관할 요약·보고 일정·자료 연결) ---------- */
+.sheet-body.alt{display:block;overflow:auto;padding:0}
+.alt-inner{max-width:1100px;margin:0 auto;padding:22px 26px 26px;background:var(--g-glass-strong)}
+.alt-title{font-size:20px;font-weight:800;letter-spacing:-.02em}
+.lead{color:var(--g-ink-2)}
+.alt-inner .tbl th{font-family:var(--font-ui);letter-spacing:.02em;text-transform:none;font-size:11.5px;color:var(--g-ink-3);border-bottom-color:var(--g-line-2)}
+.alt-inner .tbl td{border-bottom-color:var(--g-line)}
+.sumview .kpi{border:0;background:transparent;gap:10px;box-shadow:none}
+.sumview .kpi div{background:rgba(255,255,255,.7);border:1px solid var(--g-line) !important;border-radius:var(--g-radius-sm);padding:12px 16px;box-shadow:var(--g-shadow-sm)}
+.sumview .kpi b{font-family:var(--font-ui);font-weight:800;letter-spacing:-.02em}
+.sumtbl tr.is-link:hover td{background:rgba(255,255,255,.6)}
+
+/* ---------- 대화창·토스트 ---------- */
+.agent{background:var(--g-glass-strong);border:1px solid var(--g-border)}
+.agent-head{border-bottom:1px solid var(--g-line)}
+.agent-user{border-radius:var(--g-radius-sm);border-color:var(--g-line);background:rgba(255,255,255,.7)}
+.agent-form{border-top:1px solid var(--g-line)}
+.agent-action,.agent-sbtn,.agent-quick button{border-radius:999px}
+.agent-chip{border-radius:999px;font-family:var(--font-ui);letter-spacing:0}
+.agent-ev-card{border-radius:var(--g-radius-sm);border-style:solid;border-color:var(--g-line);background:rgba(255,255,255,.55)}
+.toast{border-radius:999px;padding:9px 16px;border:1px solid var(--g-border)}
+.ai-fab{box-shadow:0 2px 0 #b8ab92 inset,0 -3px 0 rgba(0,0,0,.08) inset,0 14px 30px -10px rgba(0,0,0,.45),0 2px 4px rgba(0,0,0,.2)}
+
+/* ---------- 영수증 안 등록 양식은 종이 그대로, 입력칸만 둥글게 ---------- */
+.reg input,.reg select{border-radius:6px}
+
+@media (max-width:980px){
+  .margin-top{grid-template-columns:1fr;padding:10px 14px} .sheet-title{border-left:0;padding-left:0}
+  .margin-bottom{padding-left:16px;margin-bottom:110px}
+}
+@media print{ body{background:#fff} .margin-top,.margin-left,.margin-right,.margin-bottom{backdrop-filter:none;box-shadow:none;background:#fff} }
