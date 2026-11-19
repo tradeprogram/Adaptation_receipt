@@ -172,12 +172,12 @@ def chat_api(body: ChatIn):
 @app.get("/api/projects/{pid}/overlay/{name}")
 def overlay(pid: str, name: str):
     import re
-    if not re.fullmatch(r"[a-z0-9_]+\.png", name):       # dnbr/pre/post, lst_*, flood_*, flood_evt_YYYYMMDD
+    if not re.fullmatch(r"[a-z0-9_]+\.(png|geojson)", name):   # dnbr/pre/post, lst_*, flood_*, flood_evt_YYYYMMDD, exposure_areas.geojson
         raise HTTPException(404)
     p = config.RESULTS_DIR / pid / name
     if not p.exists():
         raise HTTPException(404, "overlay not computed")
-    return FileResponse(p, media_type="image/png", headers={"Cache-Control": "no-store"})
+    return FileResponse(p, media_type="application/geo+json" if name.endswith(".geojson") else "image/png", headers={"Cache-Control": "no-store"})
 
 
 class Snapshot(BaseModel):
