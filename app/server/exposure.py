@@ -2,7 +2,7 @@
 
 입력
 - 검증 모듈이 저장한 조회 격자(results/<pid>/layers.npz): 산불 dnbr(1~4 등급), 침수 flood_before/flood_after(1 = 침수)
-- 통계청 SGIS(실측 2026-11-19): stats/population.json(low_search=1) → 읍면동별 aged_child_idx(노령화지수), oldage_suprt_per(노년부양비), tot_ppltn
+- 국가데이터처 SGIS(실측 2026-11-19): stats/population.json(low_search=1) → 읍면동별 aged_child_idx(노령화지수), oldage_suprt_per(노년부양비), tot_ppltn
   boundary/hadmarea.geojson(low_search=1) → 읍면동 경계, 좌표계 EPSG:5179
 - project.sgis_areas = [[시도명, 시군구명], ...] 분석 범위 후보 시군
 출력: results/<pid>/exposure.json(표·요약), exposure_areas.geojson(지도용 단순화 경계)
@@ -104,7 +104,7 @@ def run(project: dict) -> dict:
     out_dir = config.RESULTS_DIR / pid
     save_json_atomic(out_dir / "exposure_areas.geojson", gj)
     res = {"status": "ok", "project_id": pid, "computed_at": dt.datetime.now().isoformat(timespec="seconds"), "hazard_label": hz_label,
-           "source": f"통계청 SGIS {YEAR} 읍면동 인구 통계와 행정구역 경계, 피해·침수 화소는 위성 검증 결과",
+           "source": f"국가데이터처 SGIS {YEAR} 읍면동 인구 통계와 행정구역 경계, 피해·침수 화소는 위성 검증 결과",
            "n_areas": len(inside), "n_hit": len(hit), "hazard_ha": round(hz_total * px_ha, 1),
            "exposed_aged_idx": round(exp_aged, 1) if exp_aged is not None else None, "ref_aged_idx": round(ref_aged, 1) if ref_aged is not None else None,
            "exposed_oldage": round(exp_old, 1) if exp_old is not None else None, "ref_oldage": round(ref_old, 1) if ref_old is not None else None,

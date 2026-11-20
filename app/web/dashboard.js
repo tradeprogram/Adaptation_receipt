@@ -167,7 +167,7 @@
     addOverlayTo(map, "overlay", mod.overlays[name] + "?t=" + Date.now(), mod.overlays.bounds, +$("#opacity").value / 100);
   }
   function renderLegend(mod, key) {
-    const box = $("#legend"); const L = key === "aging" ? { label: "읍면 고령화지수", type: "ramp", min: 300, max: 2500, unit: "", stops: AGING_STOPS, note: "65세 이상 인구 ÷ 0~14세 인구 × 100, 통계청 SGIS 2023. 읍면을 누르면 피해·침수 면적 표시" } : legendOf(mod, key);
+    const box = $("#legend"); const L = key === "aging" ? { label: "읍면 고령화지수", type: "ramp", min: 300, max: 2500, unit: "", stops: AGING_STOPS, note: "65세 이상 인구 ÷ 0~14세 인구 × 100, 국가데이터처 SGIS 2023. 읍면을 누르면 피해·침수 면적 표시" } : legendOf(mod, key);
     if (!L || key === "none") { box.hidden = true; return; }
     let body = "";
     if (L.type === "classes") body = `<div class="lg-items">${L.items.map((i) => `<span class="lg-item"><i class="sw" style="background:${i.c}"></i>${i.t}</span>`).join("")}</div>`;
@@ -495,7 +495,7 @@
   }
   async function loadKeys() {
     const r = await api("/api/health"); const keys = r.data.keys;
-    const DESC = { GEMINI_API_KEY: "설명 대화(Gemini)", DATA_GO_KR_SERVICE_KEY: "건축물대장 표제부", SGIS_CONSUMER_KEY: "통계청 SGIS 인증 키", SGIS_CONSUMER_SECRET: "통계청 SGIS 시크릿", VWORLD_API_KEY: "브이월드 건물 외곽선", KMA_APIHUB_KEY: "기상청 시간강우", SAFETYDATA_KEY_SHELTER: "무더위쉼터(행정안전부)", SAFETYDATA_KEY_RECOVERY: "복구계획 공공시설(행정안전부)", PC_SDK_SUBSCRIPTION_KEY: "Planetary Computer 구독키(선택)" };
+    const DESC = { GEMINI_API_KEY: "설명 대화(Gemini)", DATA_GO_KR_SERVICE_KEY: "건축물대장 표제부", SGIS_CONSUMER_KEY: "국가데이터처 SGIS 인증 키", SGIS_CONSUMER_SECRET: "국가데이터처 SGIS 시크릿", VWORLD_API_KEY: "브이월드 건물 외곽선", KMA_APIHUB_KEY: "기상청 시간강우", SAFETYDATA_KEY_SHELTER: "무더위쉼터(행정안전부)", SAFETYDATA_KEY_RECOVERY: "복구계획 공공시설(행정안전부)", PC_SDK_SUBSCRIPTION_KEY: "Planetary Computer 구독키(선택)" };
     $("#keyChips").innerHTML = Object.entries(keys).filter(([k]) => !k.includes("SECRET")).map(([k, v]) => `<span class="chip ${v ? "on" : ""}">${k.replace(/_API_KEY|_SERVICE_KEY|_CONSUMER_KEY|_SDK_SUBSCRIPTION_KEY|_KEY/, "")}</span>`).join("");
     $("#keysTable").innerHTML = `<tr><th>키</th><th>용도</th><th>상태</th></tr>` + Object.entries(keys).map(([k, v]) => `<tr><td><code>${k}</code></td><td>${DESC[k] || ""}</td><td><span class="mark ${v ? "detected" : "waiting_input"}">${v ? "설정됨" : "키 필요"}</span></td></tr>`).join("");
   }

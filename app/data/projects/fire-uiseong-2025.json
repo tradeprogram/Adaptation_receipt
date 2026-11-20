@@ -25,7 +25,12 @@
   "res_m": 40,
   "dnbr_threshold": 0.27,
   "prefire_ndvi_min": 0.3,
-  "control_abs_dnbr_max": 0.05
+  "control_abs_dnbr_max": 0.05,
+  "forest_mask": {
+   "source": "imsangdo5",
+   "sido_dir": "경상북도",
+   "sido_code": "47"
+  }
  },
  "beneficiaries": [],
  "notes": [
