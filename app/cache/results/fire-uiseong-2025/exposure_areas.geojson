@@ -9,8 +9,8 @@
     "aged_idx": 392.5,
     "oldage": 58.9,
     "pop": 12336.0,
-    "hazard_ha": 1033.4,
-    "hazard_pct_of_area": 15.2
+    "hazard_ha": 875.2,
+    "hazard_pct_of_area": 12.9
    },
    "geometry": {
     "type": "Polygon",
@@ -356,8 +356,8 @@
     "aged_idx": 1910.2,
     "oldage": 115.0,
     "pop": 1799.0,
-    "hazard_ha": 3755.6,
-    "hazard_pct_of_area": 51.3
+    "hazard_ha": 3080.3,
+    "hazard_pct_of_area": 42.1
    },
    "geometry": {
     "type": "Polygon",
@@ -783,8 +783,8 @@
     "aged_idx": 2284.2,
     "oldage": 138.9,
     "pop": 1531.0,
-    "hazard_ha": 2706.8,
-    "hazard_pct_of_area": 41.6
+    "hazard_ha": 2344.9,
+    "hazard_pct_of_area": 36.1
    },
    "geometry": {
     "type": "Polygon",
@@ -1114,8 +1114,8 @@
     "aged_idx": 1883.7,
     "oldage": 103.1,
     "pop": 1639.0,
-    "hazard_ha": 1372.0,
-    "hazard_pct_of_area": 13.3
+    "hazard_ha": 1174.7,
+    "hazard_pct_of_area": 11.4
    },
    "geometry": {
     "type": "Polygon",
@@ -1485,8 +1485,8 @@
     "aged_idx": 2623.3,
     "oldage": 114.9,
     "pop": 1502.0,
-    "hazard_ha": 25.4,
-    "hazard_pct_of_area": 0.4
+    "hazard_ha": 17.4,
+    "hazard_pct_of_area": 0.2
    },
    "geometry": {
     "type": "Polygon",
@@ -1808,7 +1808,7 @@
     "aged_idx": 1311.3,
     "oldage": 107.1,
     "pop": 1397.0,
-    "hazard_ha": 0.8,
+    "hazard_ha": 0.6,
     "hazard_pct_of_area": 0.1
    },
    "geometry": {
@@ -2378,8 +2378,8 @@
     "aged_idx": 1251.6,
     "oldage": 114.2,
     "pop": 3941.0,
-    "hazard_ha": 11.2,
-    "hazard_pct_of_area": 0.3
+    "hazard_ha": 0.8,
+    "hazard_pct_of_area": 0.0
    },
    "geometry": {
     "type": "Polygon",
@@ -2709,8 +2709,8 @@
     "aged_idx": 912.2,
     "oldage": 84.8,
     "pop": 3779.0,
-    "hazard_ha": 57.1,
-    "hazard_pct_of_area": 0.9
+    "hazard_ha": 21.9,
+    "hazard_pct_of_area": 0.3
    },
    "geometry": {
     "type": "Polygon",
@@ -3012,8 +3012,8 @@
     "aged_idx": 1220.2,
     "oldage": 112.7,
     "pop": 2379.0,
-    "hazard_ha": 375.7,
-    "hazard_pct_of_area": 5.8
+    "hazard_ha": 234.1,
+    "hazard_pct_of_area": 3.6
    },
    "geometry": {
     "type": "Polygon",
@@ -3319,8 +3319,8 @@
     "aged_idx": 1664.7,
     "oldage": 118.4,
     "pop": 1617.0,
-    "hazard_ha": 29.1,
-    "hazard_pct_of_area": 5.5
+    "hazard_ha": 0.2,
+    "hazard_pct_of_area": 0.0
    },
    "geometry": {
     "type": "Polygon",
@@ -3518,8 +3518,8 @@
     "aged_idx": 519.6,
     "oldage": 78.2,
     "pop": 4264.0,
-    "hazard_ha": 318.5,
-    "hazard_pct_of_area": 11.2
+    "hazard_ha": 173.5,
+    "hazard_pct_of_area": 6.1
    },
    "geometry": {
     "type": "Polygon",
@@ -3761,8 +3761,8 @@
     "aged_idx": 2535.3,
     "oldage": 133.4,
     "pop": 771.0,
-    "hazard_ha": 714.2,
-    "hazard_pct_of_area": 12.9
+    "hazard_ha": 592.2,
+    "hazard_pct_of_area": 10.7
    },
    "geometry": {
     "type": "Polygon",
@@ -4028,8 +4028,8 @@
     "aged_idx": 2190.0,
     "oldage": 128.8,
     "pop": 1995.0,
-    "hazard_ha": 2559.7,
-    "hazard_pct_of_area": 25.5
+    "hazard_ha": 2263.2,
+    "hazard_pct_of_area": 22.5
    },
    "geometry": {
     "type": "Polygon",
@@ -4395,8 +4395,8 @@
     "aged_idx": 2812.5,
     "oldage": 125.3,
     "pop": 825.0,
-    "hazard_ha": 618.3,
-    "hazard_pct_of_area": 19.2
+    "hazard_ha": 532.6,
+    "hazard_pct_of_area": 16.6
    },
    "geometry": {
     "type": "Polygon",
@@ -4698,8 +4698,8 @@
     "aged_idx": 1086.9,
     "oldage": 83.1,
     "pop": 6089.0,
-    "hazard_ha": 6.9,
-    "hazard_pct_of_area": 4.9
+    "hazard_ha": 0.0,
+    "hazard_pct_of_area": 0.0
    },
    "geometry": {
     "type": "Polygon",
@@ -5117,8 +5117,8 @@
     "aged_idx": 240.3,
     "oldage": 38.0,
     "pop": 6897.0,
-    "hazard_ha": 362.6,
-    "hazard_pct_of_area": 5.2
+    "hazard_ha": 231.5,
+    "hazard_pct_of_area": 3.3
    },
    "geometry": {
     "type": "Polygon",
@@ -5532,8 +5532,8 @@
     "aged_idx": 1459.5,
     "oldage": 111.2,
     "pop": 2413.0,
-    "hazard_ha": 4838.7,
-    "hazard_pct_of_area": 56.7
+    "hazard_ha": 3918.9,
+    "hazard_pct_of_area": 45.9
    },
    "geometry": {
     "type": "Polygon",
@@ -5855,8 +5855,8 @@
     "aged_idx": 2755.0,
     "oldage": 159.0,
     "pop": 1835.0,
-    "hazard_ha": 445.6,
-    "hazard_pct_of_area": 8.0
+    "hazard_ha": 337.4,
+    "hazard_pct_of_area": 6.1
    },
    "geometry": {
     "type": "Polygon",
@@ -6166,8 +6166,8 @@
     "aged_idx": 1165.7,
     "oldage": 79.7,
     "pop": 1910.0,
-    "hazard_ha": 3595.1,
-    "hazard_pct_of_area": 61.0
+    "hazard_ha": 2978.9,
+    "hazard_pct_of_area": 50.5
    },
    "geometry": {
     "type": "Polygon",
@@ -6457,8 +6457,8 @@
     "aged_idx": 1669.7,
     "oldage": 103.3,
     "pop": 2573.0,
-    "hazard_ha": 3213.5,
-    "hazard_pct_of_area": 40.8
+    "hazard_ha": 2495.2,
+    "hazard_pct_of_area": 31.7
    },
    "geometry": {
     "type": "Polygon",
@@ -6852,8 +6852,8 @@
     "aged_idx": 2238.6,
     "oldage": 114.6,
     "pop": 2446.0,
-    "hazard_ha": 4547.1,
-    "hazard_pct_of_area": 28.0
+    "hazard_ha": 3935.7,
+    "hazard_pct_of_area": 24.3
    },
    "geometry": {
     "type": "Polygon",
@@ -7387,8 +7387,8 @@
     "aged_idx": 1962.5,
     "oldage": 105.7,
     "pop": 1568.0,
-    "hazard_ha": 1222.4,
-    "hazard_pct_of_area": 49.0
+    "hazard_ha": 942.4,
+    "hazard_pct_of_area": 37.7
    },
    "geometry": {
     "type": "Polygon",
@@ -7954,8 +7954,8 @@
     "aged_idx": 159.2,
     "oldage": 25.4,
     "pop": 25591.0,
-    "hazard_ha": 28.1,
-    "hazard_pct_of_area": 4.5
+    "hazard_ha": 0.0,
+    "hazard_pct_of_area": 0.0
    },
    "geometry": {
     "type": "Polygon",
@@ -8121,8 +8121,8 @@
     "aged_idx": 121.5,
     "oldage": 23.8,
     "pop": 20391.0,
-    "hazard_ha": 1.1,
-    "hazard_pct_of_area": 2.7
+    "hazard_ha": 0.0,
+    "hazard_pct_of_area": 0.0
    },
    "geometry": {
     "type": "Polygon",
@@ -8204,8 +8204,8 @@
     "aged_idx": 88.3,
     "oldage": 18.8,
     "pop": 10333.0,
-    "hazard_ha": 34.2,
-    "hazard_pct_of_area": 2.2
+    "hazard_ha": 4.0,
+    "hazard_pct_of_area": 0.3
    },
    "geometry": {
     "type": "Polygon",
@@ -8375,8 +8375,8 @@
     "aged_idx": 1193.3,
     "oldage": 95.0,
     "pop": 2269.0,
-    "hazard_ha": 7.0,
-    "hazard_pct_of_area": 0.3
+    "hazard_ha": 1.1,
+    "hazard_pct_of_area": 0.0
    },
    "geometry": {
     "type": "Polygon",
@@ -8798,8 +8798,8 @@
     "aged_idx": 1190.1,
     "oldage": 111.9,
     "pop": 2377.0,
-    "hazard_ha": 1.6,
-    "hazard_pct_of_area": 0.2
+    "hazard_ha": 0.2,
+    "hazard_pct_of_area": 0.0
    },
    "geometry": {
     "type": "Polygon",
@@ -9193,8 +9193,8 @@
     "aged_idx": 2393.1,
     "oldage": 137.4,
     "pop": 2456.0,
-    "hazard_ha": 5.6,
-    "hazard_pct_of_area": 3.6
+    "hazard_ha": 0.3,
+    "hazard_pct_of_area": 0.2
    },
    "geometry": {
     "type": "Polygon",

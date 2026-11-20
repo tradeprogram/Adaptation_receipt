@@ -22,6 +22,8 @@ JOBS_DIR = _WRITABLE / "jobs"
 SCENES_DIR = _WRITABLE / "scenes"
 RESULTS_DIR = CACHE_DIR / "results"
 WEB_DIR = ROOT / "web"
+# 산림청 5차 임상도(1:25,000) 시도별 shapefile 폴더(로컬 재검정 전용, 저장소에는 넣지 않음)
+IMSANGDO_DIR = Path(os.getenv("IMSANGDO_DIR", r"C:\sb\산림청 임상도"))
 for _d in (CACHE_DIR, JOBS_DIR, SCENES_DIR, RESULTS_DIR):
     try:
         _d.mkdir(parents=True, exist_ok=True)

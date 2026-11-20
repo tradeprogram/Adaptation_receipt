@@ -213,7 +213,7 @@ const s4 = [
   CAP("그림 10. (a) 시행 구역과 비교 구역의 사업 전후 비교(이중차분) 개념, (b) 가양8단지 9개 동의 지붕 100 m²당 세대수와 다음 집행 순위"),
   P("카드에는 검증 설계의 수준도 함께 적는다. 시행 구역과 비교 구역이 모두 갖추어진 경우는 사업 효과 검증으로, 사업 경계 자료가 아직 없어 피해지 전체나 분석 범위 전체의 변화를 본 경우는 현장 변화 분석으로 표시하고, 경계를 결합하면 어떻게 전환되는지를 적는다. 현재 가양8단지는 사업 효과 검증, 의성과 부여는 현장 변화 분석 단계이며, 이 구분을 통해 현장 변화 분석의 결과가 사업 효과로 해석되는 것을 방지한다."),
   H2("4.2 실증 사례 1: 영남 산불 피해지의 회복과 취약 지역 노출"),
-  P(`그림 11은 공개 자료만으로 산불 모듈을 실행한 결과이다. Sentinel-2 상대궤도 R103의 다섯 장면(${ser[0].date}부터 ${ser[4].date}까지)을 같은 조건으로 40 m 격자에 맞추고, 발화 전후 NBR 차이가 0.27을 넘으면서[17] 산불 전 숲이었던 화소 ${mv(fire, "burned_forest_ha").toLocaleString("ko-KR")} ha를 피해지로, 변화가 없는 인접 산림 ${mv(fire, "control_ha").toLocaleString("ko-KR")} ha를 비교 구역으로 정의하였다. 피해 정도별 면적은 경 ${sev[1]} ha, 중 ${sev[2]} ha, 중강 ${sev[3]} ha, 강 ${sev[4]} ha로 산출되었다.`),
+  P(`그림 11은 공개 자료만으로 산불 모듈을 실행한 결과이다. Sentinel-2 상대궤도 R103의 다섯 장면(${ser[0].date}부터 ${ser[4].date}까지)을 같은 조건으로 40 m 격자에 맞추었다. 숲은 국립산림과학원의 산불위험 통합예보 체계와 같이 산림청 5차 임상도(1:25,000)의 입목지로 정의하고[26,27], 그 가운데 산불 전 NDVI가 0.30을 넘는 화소만 남겼다. 이 범위에서 발화 전후 NBR 차이가 0.27을 넘는 화소 ${mv(fire, "burned_forest_ha").toLocaleString("ko-KR")} ha를 피해지로[17], 변화가 없는 인접 산림 ${mv(fire, "control_ha").toLocaleString("ko-KR")} ha를 비교 구역으로 정의하였으며, 임상도 입목지 밖의 하천, 농경지, 시가지에서 나타난 변화 ${fire.design.forest_mask.excluded_nonforest_burn_ha.toLocaleString("ko-KR")} ha는 피해에서 제외하였다. 피해 정도별 면적은 경 ${sev[1]} ha, 중 ${sev[2]} ha, 중강 ${sev[3]} ha, 강 ${sev[4]} ha로 산출되었다.`),
   P(`피해지의 식생지수 중앙값은 진화 직후 주변 숲의 ${ratio(1)}배로 떨어진 뒤 첫 생장기에 ${ratio(2)}배, 이듬해 생장기에 ${ratio(3)}배까지 올라왔고, 2026년 생장기 말에는 ${ratio(4)}배였다. 주변 숲과 견준 변화 차이는 ${mv(fire, "did_effect_ndvi").toFixed(3)}이며 오차 범위 ${ci[0].toFixed(3)}~${ci[1].toFixed(3)}가 0을 포함하지 않으므로, 성과 카드는 회복 미달로 판정한다. 여기에 산림청의 계획복원 구역 자료를 결합하면 계획복원지와 자연복원지의 회복 속도를 같은 그림 위에서 비교할 수 있으며, 그것이 85% 자연복원 가정의 타당성을 검증하는 첫 보고서가 된다.`),
   P(`이어서 피해 화소를 국가데이터처 SGIS의 2023년 읍면동 경계와 인구 통계에 겹쳐 취약 지역 노출을 계산하였다(그림 12). 분석 범위에 걸리는 ${exf.n_areas}개 읍면 가운데 ${exf.n_hit}곳에 피해가 있었으며, 피해 면적의 ${Math.round(exf.share_in_high_aging * 100)}%가 고령화지수 중앙값 이상의 읍면에 분포하였다. 피해 면적으로 가중한 고령화지수는 ${n0(exf.exposed_aged_idx)}로, 분석 범위의 인구 가중 평균 ${n0(exf.ref_aged_idx)}보다 약 ${(exf.exposed_aged_idx / exf.ref_aged_idx).toFixed(1)}배 높았다. 이 결과에 따라 카드는 고령 인구 비중이 높고 피해 면적이 큰 길안면, 단촌면, 일직면을 우선 복구와 주민 지원 검토 대상으로 제시한다.`),
   IMG("fig_fire.png", 5.3),
@@ -409,6 +409,8 @@ const refs = [
   "Microsoft Planetary Computer STAC API(sentinel-2-l2a, sentinel-1-rtc, landsat-c2-l2 컬렉션), 접근일 2026-10-06~11-19; 처리 매니페스트(장면 ID, 처리 기준선, 유효 화소율)는 공개 저장소 app/cache/results에 수록.",
   "국가데이터처(구 통계청) SGIS 오픈API(인구 통계와 행정구역 경계, 2023, 읍면동); 국토교통부 건축물대장 표제부(공공데이터포털); 행정안전부 재난안전데이터 공유 플랫폼(무더위쉼터 DSSP-IF-10942); 기상청 API허브 지상관측 시간자료(kma_sfctm3); 국토교통부 브이월드 건물 WFS.",
   "적응 영수증 시제품 소스 코드 및 배포본: https://github.com/tradeprogram/Adaptation_receipt ; https://adaptation-receipt-two.vercel.app (접근일 2026-11-19).",
+  "국립산림과학원 (2023). 기상 빅데이터를 활용한 산불위험 통합예보 체계 구축. 연구보고 23-18(발간등록번호 11-1400377-001517-01).",
+  "산림청, 제5차 임상도(1:25,000) 경상북도, 산림공간정보서비스. 임상 코드 정의서(DATA036)의 무립목 코드(벌채적지, 미립목지, 황폐지, 목장, 경작지, 제지, 수체 등) 제외.",
 ];
 const s8 = [
   BR(),
@@ -416,7 +418,7 @@ const s8 = [
   ...refs.map((t, i) => new Paragraph({ alignment: AlignmentType.LEFT, spacing: { line: 252, after: 40 }, indent: { left: 360, hanging: 360 }, children: [run(`[${i + 1}] `, { size: 17 }), run(t, { size: 17 })] })),
   new Paragraph({ spacing: { before: 160, after: 40 }, children: [run("부록. 산불 실증 처리 매니페스트 요약", { size: 18, bold: true, color: NAVY })] }),
   T([150, 300, 110, 110, 110], ["관측일", "장면 ID", "처리 기준선", "구름(%)", "유효 화소(%)"], fire.scenes.map((s) => [s.date || "-", (s.ids || []).join(", "), s.processing_baseline || "", s.cloud_cover != null ? s.cloud_cover.toFixed(1) : "", String(s.valid_pct ?? "")]), { size: 14 }),
-  P("처리 조건: 40 m 재표집(평균), SCL 0, 1, 3, 8, 9, 10, 11 마스킹, reflectance = (DN − 1000)/10000(PB 04.00 이후), dNBR = NBR(산불 전) − NBR(진화 직후), 피해지 = dNBR > 0.27 및 산불 전 NDVI > 0.30, 비교 구역 = |dNBR| < 0.05 및 산불 전 NDVI > 0.30. 궤도 가장자리와 타일 경계 밖은 분석에서 제외하였다.", { size: 16, after: 0 }),
+  P("처리 조건: 40 m 재표집(평균), SCL 0, 1, 3, 8, 9, 10, 11 마스킹, reflectance = (DN − 1000)/10000(PB 04.00 이후), dNBR = NBR(산불 전) − NBR(진화 직후), 산림 = 산림청 5차 임상도 입목지 및 산불 전 NDVI > 0.30, 피해지 = 산림 중 dNBR > 0.27, 비교 구역 = 산림 중 |dNBR| < 0.05. 궤도 가장자리와 타일 경계 밖은 분석에서 제외하였다.", { size: 16, after: 0 }),
 ];
 
 const doc = new Document({

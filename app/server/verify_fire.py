@@ -2,6 +2,8 @@
 
 설계: 동일 상대궤도 Sentinel-2 L2A, dNBR 피해등급(Key & Benson 2006), 피해지 vs 미피해 인접 산림 대조,
 NDVI 회복률(피해지/대조지 중앙값 비)과 이중차분 효과·부트스트랩 CI·검출가능최소효과(MDE).
+산림 범위: 산림청 5차 임상도(1:25,000) 입목지 ∩ 산불 전 NDVI > 0.30. 국립산림과학원 「기상 빅데이터를 활용한 산불위험 통합예보 체계 구축」의
+산림 정의(산림공간정보 임상도)를 따른다. 임상도 폴리곤 밖(하천, 농경지, 시가지)과 무립목 임지 코드(경작지, 제지, 수체 등)는 피해 산정에서 제외.
 모든 장면은 캐시되고(장면 단위 체크포인트), 실패 장면은 결과에 이름과 함께 남는다.
 """
 from __future__ import annotations
@@ -18,6 +20,8 @@ from .overlay_png import NDVI_STOPS, scalar_png
 S2 = "sentinel-2-l2a"
 BANDS = ["B02", "B03", "B04", "B08", "B12", "SCL"]
 SCL_BAD = (0, 1, 3, 8, 9, 10, 11)
+# 임상도 FIFTH_FRTP 가운데 입목이 없는 임지(DATA036 코드 정의서): 벌채적지, 미립목지, 황폐지, 목장, 화전, 건물부지, 경작지, 제지, 수체, 임간나지, 해당없음
+NONSTOCK = {"F", "O", "E", "LP", "cm", "u", "L", "R", "W", "Dn", "99"}
 SEVERITY = [(0.10, 0.27, "경(low)"), (0.27, 0.44, "중(moderate-low)"), (0.44, 0.66, "중강(moderate-high)"), (0.66, 9.0, "강(high)")]
 
 
@@ -140,13 +144,32 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
         ndvi = {k: (r["B08"] - r["B04"]) / (r["B08"] + r["B04"]) for k, r in stack.items()}
         nbr = {k: (r["B08"] - r["B12"]) / (r["B08"] + r["B12"]) for k, r in stack.items()}
     dnbr = nbr["pre"] - nbr["post"]
-    forest = ndvi["pre"] > ndvi_min
+    # 산림 범위: 임상도 입목지 폴리곤을 분석 격자(UTM, res_m)에 래스터화. 파일이 없으면 NDVI만으로 정의하고 한계에 적는다
+    fm = prm.get("forest_mask") or {}; imsang = None; fm_info = {"source": "산불 전 NDVI만(임상도 미사용)"}
+    shp = (Path(config.IMSANGDO_DIR) / fm.get("sido_dir", "") / f"{fm.get('sido_code', '')}.shp") if fm else None
+    if shp is not None and shp.exists():
+        import geopandas as gpd
+        from rasterio import features
+        from rasterio.transform import from_bounds
+        from shapely.geometry import box as _box
+        x0, y0, x1, y1, _, _ = stac.grid_for(bbox, res, epsg)
+        b5179 = tuple(gpd.GeoSeries([_box(*bbox)], crs=4326).to_crs(5179).total_bounds)
+        gdf = gpd.read_file(shp, bbox=b5179, engine="pyogrio", encoding="cp949")
+        stocked = gdf[~gdf["FIFTH_FRTP"].isin(NONSTOCK)].to_crs(epsg)
+        imsang = features.rasterize(((geom, 1) for geom in stocked.geometry), out_shape=dnbr.shape, transform=from_bounds(x0, y0, x1, y1, dnbr.shape[1], dnbr.shape[0]), fill=0, dtype="uint8").astype(bool)
+        fm_info = {"source": "산림청 5차 임상도(1:25,000) 입목지", "file": f"{fm.get('sido_dir')}/{shp.name}", "polygons": int(len(stocked)),
+                   "excluded_codes": sorted(NONSTOCK), "reference": "국립산림과학원, 기상 빅데이터를 활용한 산불위험 통합예보 체계 구축(임상도 산림 정의)"}
+    forest = (ndvi["pre"] > ndvi_min) & (imsang if imsang is not None else True)
     burn = (dnbr > thr) & forest
     ctrl = (np.abs(dnbr) < ctrl_max) & forest & np.isfinite(dnbr)
     px_ha = res * res / 1e4
     cls = np.full(dnbr.shape, np.nan)
     for k, (lo, hi, _) in enumerate(SEVERITY, start=1):
-        cls[(dnbr >= lo) & (dnbr < hi)] = k
+        cls[(dnbr >= lo) & (dnbr < hi) & forest] = k      # 피해 등급은 산림 범위 안에서만
+    fin = np.isfinite(dnbr)
+    fm_info["forest_ha"] = int(round(float(forest.sum()) * px_ha))
+    fm_info["excluded_nonforest_burn_ha"] = int(round(float(((dnbr > thr) & fin & ~(imsang if imsang is not None else np.ones_like(forest))).sum()) * px_ha))
+    fm_info["excluded_low_ndvi_burn_ha"] = int(round(float(((dnbr > thr) & fin & (imsang if imsang is not None else True) & ~(ndvi["pre"] > ndvi_min)).sum()) * px_ha))
     severity = [{"class": k, "label": lab, "ha": int(round(float(np.nansum(cls == k)) * px_ha))} for k, (lo, hi, lab) in enumerate(SEVERITY, start=1)]
 
     labels = [s["label"] for s in scenes if s["date"] and s["label"] in stack]
@@ -182,7 +205,7 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
         "status": "partial" if failed else "ok",
         "module": "fire", "project_id": p["id"], "computed_at": dt.datetime.now().isoformat(timespec="seconds"),
         "design": {"orbit": orbit, "resolution_m": res, "dnbr_threshold": thr, "prefire_ndvi_min": ndvi_min, "control_abs_dnbr_max": ctrl_max, "epsg": epsg,
-                   "masking": "SCL 0·1·3·8·9·10·11", "reflectance": "(DN-1000)/10000 (PB≥04.00)", "severity_reference": "Key & Benson (2006)"},
+                   "masking": "SCL 0·1·3·8·9·10·11", "reflectance": "(DN-1000)/10000 (PB≥04.00)", "severity_reference": "Key & Benson (2006)", "forest_mask": fm_info},
         "metrics": {
             "burned_forest_ha": metric(burned_ha, "MODEL", "ha", n=int(burn.sum()), note="산불 전에 숲이었고 불탄 정도가 기준을 넘는 화소의 면적"),
             "control_ha": metric(int(round(float(ctrl.sum()) * px_ha)), "MODEL", "ha", n=int(ctrl.sum()), note="같은 범위 안에서 불타지 않은 숲"),
@@ -194,7 +217,7 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
         },
         "severity": severity, "series": series, "scenes": scenes, "failed": failed,
         "overlays": {"dnbr": f"/api/projects/{p['id']}/overlay/dnbr.png", "pre": f"/api/projects/{p['id']}/overlay/pre.png", "post": f"/api/projects/{p['id']}/overlay/post.png", **ndvi_overlays, "bounds": bbox,
-                     "legend": {**ndvi_legend, "dnbr": {"label": "피해등급", "type": "classes", "query": "dnbr", "items": [{"c": "#f7e26b", "t": "경"}, {"c": "#f29e2e", "t": "중"}, {"c": "#d7301f", "t": "중강"}, {"c": "#7a0177", "t": "강"}], "note": "불탄 정도. 위성 지표 dNBR 기준(Key & Benson 2006)"},
+                     "legend": {**ndvi_legend, "dnbr": {"label": "피해등급", "type": "classes", "query": "dnbr", "items": [{"c": "#f7e26b", "t": "경"}, {"c": "#f29e2e", "t": "중"}, {"c": "#d7301f", "t": "중강"}, {"c": "#7a0177", "t": "강"}], "note": "불탄 정도. 위성 지표 dNBR 기준(Key & Benson 2006), 산림(임상도 입목지) 안에서만 표시"},
                                 "pre": {"label": "산불 전", "type": "text", "text": f"Sentinel-2 진색 합성 {next((x['date'] for x in scenes if x['label'] == 'pre'), '')}"},
                                 "post": {"label": "진화 직후", "type": "text", "text": f"Sentinel-2 진색 합성 {next((x['date'] for x in scenes if x['label'] == 'post'), '')}"}}},
         "verdict": _verdict(last_ratio, did["effect"], mde, ci),
@@ -203,6 +226,7 @@ def run(project: dict, progress=lambda done, total, msg: None) -> dict:
             "식생지수 회복에 풀과 관목 재생 포함, 조림목 회복과 상이 가능",
             "알아볼 수 있는 최소 변화는 화소 독립 가정의 낙관적 값",
             "궤도 가장자리와 타일 경계 밖은 분석 제외",
+            "산림 범위는 산림청 5차 임상도 기준, 임상도 제작 이후의 토지 이용 변화 미반영" if imsang is not None else "임상도 미결합, 하천과 농경지 일부가 산림으로 포함될 수 있음",
         ],
     }
 
