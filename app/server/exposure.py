@@ -106,7 +106,8 @@ def run(project: dict) -> dict:
     res = {"status": "ok", "project_id": pid, "computed_at": dt.datetime.now().isoformat(timespec="seconds"), "hazard_label": hz_label,
            "source": f"국가데이터처 SGIS {YEAR} 읍면동 인구 통계와 행정구역 경계, 피해·침수 화소는 위성 검증 결과",
            "n_areas": len(inside), "n_hit": len(hit), "hazard_ha": round(hz_total * px_ha, 1),
-           "exposed_aged_idx": round(exp_aged, 1) if exp_aged is not None else None, "ref_aged_idx": round(ref_aged, 1) if ref_aged is not None else None,
+           # 소수 둘째 자리까지 저장: 1자리로 저장하면 정수 표기 때 두 번 반올림되어 1,804.55가 1,804로 내려가는 오차가 생긴다
+           "exposed_aged_idx": round(exp_aged, 2) if exp_aged is not None else None, "ref_aged_idx": round(ref_aged, 2) if ref_aged is not None else None,
            "exposed_oldage": round(exp_old, 1) if exp_old is not None else None, "ref_oldage": round(ref_old, 1) if ref_old is not None else None,
            "median_aged_idx": round(med, 1) if med is not None else None, "share_in_high_aging": round(share_high, 3),
            "top": [{k: a[k] for k in ("name", "sigungu", "hazard_ha", "severe_ha", "hazard_share", "hazard_pct_of_area", "aged_idx", "oldage", "pop")} for a in top],
