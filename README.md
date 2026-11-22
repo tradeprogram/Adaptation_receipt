@@ -212,12 +212,7 @@ AWS 공개 지형 타일로 만든 3D 지형과 음영기복 위에 위성영상
 │  ├─ tests/                    pytest(지표 계산, API, 채팅)
 │  ├─ requirements-full.txt     로컬 전체 실행용(rasterio 등 포함)
 │  └─ README.md                 서버 구조, API 표, 외부 API 실측 기록, 배포 절차
-├─ scripts/                     기획서 그림과 문서 생성
-├─ figures/                     생성된 그림, logos/(구성도 로고와 출처)
-├─ docs/, reports/, research_notes/   설계 명세와 조사 노트
-├─ DESIGN.md, PRODUCT.md        화면 디자인 규격, 제품 정의
-├─ 2026_기후변화대응_비즈니스아이디어_기획안_적응영수증.docx / .pdf        예선 기획안
-└─ 2026_기후변화대응_비즈니스아이디어_상세기획서_적응영수증_최종.docx / .pdf   최종 심사 상세기획서
+└─ figures/                     그림, logos/(구성도 로고와 출처)
 ```
 
 ---

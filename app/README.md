@@ -1,6 +1,6 @@
 # 적응 영수증 (Adaptation Receipt) — 웹서비스
 
-집행된 기후적응 사업(산불 피해지 복구, 하천·배수 정비, 옥상 차열)의 **효과와 수혜 형평성을 공개 위성 관측과 준실험 설계로 사후 검증**해, 지자체 이행점검 보고서(매년 4/30)·공공기관 이행실적·공시에 첨부할 **성과 카드**를 만드는 서비스. 예선 기획안 `../2026_기후변화대응_비즈니스아이디어_기획안_적응영수증.docx`와 최종 심사 상세기획서 `../2026_기후변화대응_비즈니스아이디어_상세기획서_적응영수증_최종.docx`의 구현체.
+집행된 기후적응 사업(산불 피해지 복구, 하천·배수 정비, 옥상 차열)의 **효과와 수혜 형평성을 공개 위성 관측과 준실험 설계로 사후 검증**해, 지자체 이행점검 보고서(매년 4/30)·공공기관 이행실적·공시에 첨부할 **성과 카드**를 만드는 서비스.
 
 ## 실행
 
@@ -99,4 +99,4 @@ app/
 ## 2026-10-15 재배분 시뮬레이션 · 강우 보정 · 검정력 사전 설계
 - **재배분 시뮬레이션**(`equity.reallocation`): 사업 대장의 `candidates`(같은 대지 지번)로 건축물대장 표제부를 모아 공동주택 동을 '지붕 100 m²당 세대수' 내림차순(동률이면 오래된 순)으로 줄 세운다. 가중치 합성 없음. `params.unit_cost_krw_m2`가 있으면 누적 비용과 `params.reallocation_budget_krw` 안의 동을 표시하고, 없으면 누적 지붕면적까지만. 카드 `equity.data.reallocation`, 대시보드 형평성 칸 표, 인쇄 카드, 채팅 근거('재배분')에 반영. 실측(가양8단지 9개 동): 809동 240세대 11.4세대/100 m² 1순위, 시공된 801·804동은 6·8순위.
 - **침수 강우 보정**(`verify_flood`): 사건별 침수 ha ÷ 최대 3시간 강우(mm)의 시기별 중앙값(`flooded_ha_per_mm_before/after`, `flooded_change_pct_rain_adjusted`). 판정은 보정값 우선. 부여: 1.10 → 1.37 ha/mm(+24%) → 미감소 유지.
-- **검정력 사전 설계**(`verify_heat`): `treated_area_ha`, `area_for_mde_1c_ha`, `area_for_mde_05c_ha`(n = 2((zα+zβ)σ/δ)², σ = 대조 MAD 기반, `design.control_sd_c`). 가양: 0.72 ha → MDE 1.65℃, 1℃ 검출에 1.95 ha, 0.5℃에 7.8 ha. 그림은 `scripts/fig_power_curve.py` → `figures/fig_power_curve.png`.
+- **검정력 사전 설계**(`verify_heat`): `treated_area_ha`, `area_for_mde_1c_ha`, `area_for_mde_05c_ha`(n = 2((zα+zβ)σ/δ)², σ = 대조 MAD 기반, `design.control_sd_c`). 가양: 0.72 ha → MDE 1.65℃, 1℃ 검출에 1.95 ha, 0.5℃에 7.8 ha. 그림은 `figures/fig_power_curve.png`.

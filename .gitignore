@@ -11,3 +11,21 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .vercel/
+
+# 로컬 문서와 작업 도구(공개 저장소에 올리지 않음)
+/*.docx
+/*.pdf
+/*.pptx
+/*.png
+/*_*.md
+backup/
+scripts/
+docs/
+reports/
+research_notes/
+.impeccable/
+.claude/
+DESIGN.md
+PRODUCT.md
+figures/slides/
+figures/shots_v2/
